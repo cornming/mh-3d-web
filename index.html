@@ -22,6 +22,7 @@
       background-color: #0b0e14;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Microsoft JhengHei', sans-serif;
       user-select: none;
+      touch-action: none;
     }
 
     #canvas-container {
@@ -216,6 +217,129 @@
       backdrop-filter: blur(8px);
     }
 
+    #runtime-error {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: min(560px, calc(100vw - 32px));
+      padding: 20px;
+      border: 1px solid #ff4757;
+      border-radius: 10px;
+      background: rgba(30, 15, 20, 0.95);
+      color: #fff;
+      text-align: center;
+      line-height: 1.6;
+      pointer-events: auto;
+      z-index: 400;
+    }
+
+    #pause-button {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 6px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 6px;
+      background: rgba(18, 22, 28, 0.88);
+      color: #fff;
+      cursor: pointer;
+      pointer-events: auto;
+      z-index: 210;
+    }
+
+    #pause-button:focus-visible,
+    .touch-btn:focus-visible,
+    .sub-btn:focus-visible {
+      outline: 3px solid #74b9ff;
+      outline-offset: 2px;
+    }
+
+    #touch-controls {
+      display: none;
+      position: absolute;
+      right: 12px;
+      bottom: 12px;
+      left: 12px;
+      justify-content: space-between;
+      align-items: end;
+      pointer-events: none;
+      z-index: 120;
+    }
+
+    .touch-dpad,
+    .touch-actions {
+      display: grid;
+      gap: 6px;
+      pointer-events: auto;
+    }
+
+    .touch-dpad {
+      grid-template-columns: repeat(3, 44px);
+      grid-template-rows: repeat(2, 44px);
+    }
+
+    .touch-dpad [data-hold-key="w"] { grid-column: 2; }
+    .touch-dpad [data-hold-key="a"] { grid-column: 1; grid-row: 2; }
+    .touch-dpad [data-hold-key="s"] { grid-column: 2; grid-row: 2; }
+    .touch-dpad [data-hold-key="d"] { grid-column: 3; grid-row: 2; }
+
+    .touch-actions {
+      grid-template-columns: repeat(2, minmax(64px, 1fr));
+      width: 150px;
+    }
+
+    .touch-btn {
+      min-width: 44px;
+      min-height: 44px;
+      padding: 5px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 8px;
+      background: rgba(18, 22, 28, 0.82);
+      color: #fff;
+      font-weight: 700;
+      touch-action: none;
+    }
+
+    @media (pointer: coarse), (max-width: 700px) {
+      #hud {
+        top: 8px;
+        left: 8px;
+        right: 8px;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .status-panel,
+      .hunter-panel,
+      .boss-panel {
+        min-width: 0;
+        width: 100%;
+        padding: 9px 11px;
+      }
+
+      .boss-panel {
+        order: -1;
+      }
+
+      #controls-hint {
+        display: none;
+      }
+
+      #pause-button {
+        top: auto;
+        right: 8px;
+        bottom: 8px;
+        left: auto;
+        transform: none;
+      }
+
+      #touch-controls {
+        display: flex;
+      }
+    }
+
     .key-badge {
       display: inline-block;
       background: #34495e;
@@ -352,6 +476,7 @@
 <body>
 
   <div id="audio-tip">🔊 點擊畫面即可啟用打擊與咆哮合成音效</div>
+  <div id="runtime-error" role="alert" aria-live="assertive" hidden></div>
 
   <!-- HUD 面板 -->
   <div id="hud">
@@ -420,14 +545,52 @@
   <!-- 結算畫面 -->
   <div id="message-overlay">
     <div id="main-msg">QUEST CLEAR!</div>
-    <button class="sub-btn" onclick="location.reload()">再次出發狩獵</button>
+    <button id="restart-button" class="sub-btn" type="button">再次出發狩獵</button>
   </div>
 
   <div id="canvas-container"></div>
 
+  <button id="pause-button" type="button" aria-pressed="false">暫停</button>
+
+  <div id="touch-controls" aria-label="觸控操作">
+    <div class="touch-dpad">
+      <button class="touch-btn" type="button" data-hold-key="w" aria-label="向前">▲</button>
+      <button class="touch-btn" type="button" data-hold-key="a" aria-label="向左">◀</button>
+      <button class="touch-btn" type="button" data-hold-key="s" aria-label="向後">▼</button>
+      <button class="touch-btn" type="button" data-hold-key="d" aria-label="向右">▶</button>
+    </div>
+    <div class="touch-actions">
+      <button class="touch-btn" type="button" data-action="light">攻擊</button>
+      <button class="touch-btn" type="button" data-action="dodge">翻滾</button>
+      <button class="touch-btn" type="button" data-action="charge">蓄力</button>
+      <button class="touch-btn" type="button" data-action="potion">回復</button>
+    </div>
+  </div>
+
   <!-- 引入 Three.js -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous"></script>
+  <script type="module">
+    import {
+      SHARPNESS_LEVELS,
+      calculateAttackDamage,
+      getChargeLevel,
+      getSharpnessLevel,
+      isWithinRange,
+      nextComboStep
+    } from './src/game-rules.mjs';
+
+    const runtimeError = document.getElementById('runtime-error');
+    const showRuntimeError = (message) => {
+      runtimeError.innerText = message;
+      runtimeError.hidden = false;
+    };
+
+    if (!window.THREE) {
+      showRuntimeError('無法載入 3D 引擎，請確認網路連線後重新整理頁面。');
+      throw new Error('Three.js failed to load');
+    }
+
+    const THREE = window.THREE;
     /* ==============================================================
        1. 程式化音效合成器 (Web Audio API Procedural Sound Synthesizer)
        擷取自開源 Web 動作遊戲優勢：免外掛資源、零延遲、高回饋
@@ -435,16 +598,40 @@
     class ProceduralAudio {
       constructor() {
         this.ctx = null;
+        this.unavailable = false;
       }
       init() {
-        if (!this.ctx) {
+        if (!this.ctx && !this.unavailable) {
           const AudioContext = window.AudioContext || window.webkitAudioContext;
-          this.ctx = new AudioContext();
-          const tip = document.getElementById('audio-tip');
-          if (tip) tip.style.display = 'none';
+          if (!AudioContext) {
+            this.unavailable = true;
+            const tip = document.getElementById('audio-tip');
+            if (tip) tip.innerText = '目前瀏覽器不支援 Web Audio，遊戲仍可繼續。';
+            return;
+          }
+          try {
+            this.ctx = new AudioContext();
+            const tip = document.getElementById('audio-tip');
+            if (tip) tip.style.display = 'none';
+          } catch (error) {
+            this.unavailable = true;
+            const tip = document.getElementById('audio-tip');
+            if (tip) {
+              tip.innerText = '音效初始化失敗，但仍可繼續遊戲。';
+              tip.style.display = 'block';
+            }
+            console.warn('Web Audio initialization failed', error);
+            return;
+          }
         }
         if (this.ctx && this.ctx.state === 'suspended') {
-          this.ctx.resume();
+          this.ctx.resume().catch(() => {
+            const tip = document.getElementById('audio-tip');
+            if (tip) {
+              tip.innerText = '瀏覽器拒絕啟用音效，遊戲仍可繼續。';
+              tip.style.display = 'block';
+            }
+          });
         }
       }
       playSlash(heavy = false) {
@@ -588,6 +775,7 @@
         this.scene = scene;
         this.particles = [];
         this.shockwaves = [];
+        this.particlePool = [];
 
         // 預設火花材質
         this.sparkGeo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
@@ -597,7 +785,9 @@
 
       spawnHitSparks(position, count = 16, isHeavy = false) {
         for (let i = 0; i < count; i++) {
-          const mesh = new THREE.Mesh(this.sparkGeo, isHeavy ? this.sparkMatRed : this.sparkMatYellow);
+          const mesh = this.particlePool.pop() || new THREE.Mesh(this.sparkGeo, this.sparkMatYellow);
+          mesh.material = isHeavy ? this.sparkMatRed : this.sparkMatYellow;
+          mesh.visible = true;
           mesh.position.copy(position);
           this.scene.add(mesh);
 
@@ -649,6 +839,8 @@
           p.life -= dt;
           if (p.life <= 0) {
             this.scene.remove(p.mesh);
+            p.mesh.visible = false;
+            this.particlePool.push(p.mesh);
             this.particles.splice(i, 1);
             continue;
           }
@@ -665,6 +857,8 @@
           sw.opacity -= 1.4 * dt;
           if (sw.opacity <= 0 || sw.radius >= sw.maxRadius) {
             this.scene.remove(sw.mesh);
+            sw.mesh.geometry.dispose();
+            sw.mesh.material.dispose();
             this.shockwaves.splice(i, 1);
             continue;
           }
@@ -683,9 +877,15 @@
     scene.fog = new THREE.FogExp2(0x131920, 0.011);
 
     const camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 500);
-    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    let renderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    } catch (error) {
+      showRuntimeError('目前瀏覽器或裝置不支援 WebGL，無法啟動 3D 遊戲。');
+      throw error;
+    }
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, window.innerWidth < 900 ? 1.25 : 1.75));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(renderer.domElement);
@@ -788,7 +988,6 @@
     scene.add(monsterGroup);
 
     const mSkinMat = new THREE.MeshStandardMaterial({ color: 0x962d22, roughness: 0.55 });
-    const mBellyMat = new THREE.MeshStandardMaterial({ color: 0xf39c12, roughness: 0.6 });
 
     // 主身軀
     const mBody = new THREE.Mesh(new THREE.BoxGeometry(4.0, 3.0, 7.0), mSkinMat);
@@ -846,14 +1045,8 @@
     let screenShakeTimer = 0; // 鏡頭微震
     let screenShakeIntensity = 0;
     let isLockOn = false;
-
-    // 斬味等級
-    const SHARPNESS_LEVELS = [
-      { name: "白斬", color: "#f5f6fa", mult: 1.32, minVal: 75 },
-      { name: "藍斬", color: "#00d2d3", mult: 1.20, minVal: 40 },
-      { name: "綠斬", color: "#2ecc71", mult: 1.05, minVal: 15 },
-      { name: "黃斬", color: "#f1c40f", mult: 0.85, minVal: 0 }
-    ];
+    let isPaused = false;
+    let lastHudSnapshot = '';
 
     const player = {
       hp: 100,
@@ -869,6 +1062,8 @@
       invincible: 0,
       chargeTime: 0,
       isCharging: false,
+      chargeLevel: 1,
+      comboTimer: 0,
       hasHitThisSwing: false
     };
 
@@ -891,10 +1086,45 @@
       hasRoared60: false
     };
 
+    const ui = {
+      hpBar: document.getElementById('hp-bar'),
+      hpText: document.getElementById('hp-text'),
+      staminaBar: document.getElementById('stamina-bar'),
+      staminaText: document.getElementById('stamina-text'),
+      potionCount: document.getElementById('potion-count'),
+      sharpnessFill: document.getElementById('sharpness-fill'),
+      sharpnessText: document.getElementById('sharpness-text'),
+      bossHpBar: document.getElementById('boss-hp-bar'),
+      bossHpText: document.getElementById('boss-hp-text'),
+      bossStateTag: document.getElementById('boss-state-tag'),
+      enrageBadge: document.getElementById('boss-enrage-badge'),
+      partHead: document.getElementById('part-head'),
+      partTail: document.getElementById('part-tail'),
+      pauseButton: document.getElementById('pause-button'),
+      restartButton: document.getElementById('restart-button')
+    };
+
+    const upAxis = new THREE.Vector3(0, 1, 0);
+    const forwardAxis = new THREE.Vector3(0, 0, 1);
+    const tempVectors = {
+      moveInput: new THREE.Vector3(),
+      moveVector: new THREE.Vector3(),
+      forward: new THREE.Vector3(),
+      toBoss: new THREE.Vector3(),
+      toHunter: new THREE.Vector3(),
+      hitCenter: new THREE.Vector3(),
+      headWorld: new THREE.Vector3(),
+      tailWorld: new THREE.Vector3(),
+      bossScreen: new THREE.Vector3(),
+      targetCamera: new THREE.Vector3(),
+      lookTarget: new THREE.Vector3()
+    };
+
     /* ==============================================================
        7. 操作輸入監聽 (Controls & Keyboard / Mouse)
        ============================================================== */
-    const keys = {};
+    const keys = Object.create(null);
+    const repeatableActions = new Set([' ', 'j', 'k', 'e', 'r', 'tab', 'f', 'p']);
     let isRightMouseDown = false;
     let mouseDeltaX = 0;
     let mouseDeltaY = 0;
@@ -904,10 +1134,13 @@
     window.addEventListener('keydown', (e) => {
       const k = e.key.toLowerCase();
       keys[k] = true;
+      if (e.repeat && repeatableActions.has(k)) return;
+      if (k === ' ') e.preventDefault();
       if (k === ' ') triggerDodge();
       if (k === 'j') handleLightAttack();
       if (k === 'k') startCharge();
       if (k === 'e') usePotion();
+      if (k === 'p') togglePause();
       if (k === 'r') useSharpen();
       if (k === 'tab' || k === 'f') {
         e.preventDefault();
@@ -938,14 +1171,84 @@
 
     window.addEventListener('contextmenu', (e) => e.preventDefault());
 
+    function resetInputState() {
+      for (const key of Object.keys(keys)) keys[key] = false;
+      isRightMouseDown = false;
+      if (player.isCharging) {
+        player.isCharging = false;
+        player.chargeTime = 0;
+        player.chargeLevel = 1;
+        player.state = 'idle';
+      }
+    }
+
+    window.addEventListener('blur', resetInputState);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) resetInputState();
+    });
+
+    function togglePause() {
+      if (gameOver) return;
+      isPaused = !isPaused;
+      ui.pauseButton.innerText = isPaused ? '繼續' : '暫停';
+      ui.pauseButton.setAttribute('aria-pressed', String(isPaused));
+      if (isPaused) resetInputState();
+    }
+
+    ui.pauseButton.addEventListener('click', togglePause);
+    ui.restartButton.addEventListener('click', () => window.location.reload());
+
+    document.querySelectorAll('[data-hold-key]').forEach((button) => {
+      const key = button.dataset.holdKey;
+      const release = (event) => {
+        event.preventDefault();
+        keys[key] = false;
+      };
+      button.addEventListener('pointerdown', (event) => {
+        event.preventDefault();
+        keys[key] = true;
+        button.setPointerCapture?.(event.pointerId);
+      });
+      button.addEventListener('pointerup', release);
+      button.addEventListener('pointercancel', release);
+      button.addEventListener('lostpointercapture', () => { keys[key] = false; });
+    });
+
+    document.querySelectorAll('[data-action]').forEach((button) => {
+      const action = button.dataset.action;
+      button.addEventListener('pointerdown', (event) => {
+        event.preventDefault();
+        if (action === 'charge') {
+          startCharge();
+        } else if (action === 'light') {
+          handleLightAttack();
+        } else if (action === 'dodge') {
+          triggerDodge();
+        } else if (action === 'potion') {
+          usePotion();
+        }
+        button.setPointerCapture?.(event.pointerId);
+      });
+      if (action === 'charge') {
+        const releaseChargeInput = (event) => {
+          event.preventDefault();
+          releaseCharge();
+        };
+        button.addEventListener('pointerup', releaseChargeInput);
+        button.addEventListener('pointercancel', releaseChargeInput);
+        button.addEventListener('lostpointercapture', releaseCharge);
+      }
+    });
+
     window.addEventListener('mousemove', (e) => {
-      if (isRightMouseDown && !isLockOn) {
+      if (isRightMouseDown && !isLockOn && !isPaused) {
         cameraYaw -= e.movementX * 0.004;
         cameraPitch = Math.max(0.1, Math.min(1.2, cameraPitch + e.movementY * 0.003));
       }
     });
 
     function toggleLockOn() {
+      if (gameOver || isPaused) return;
       isLockOn = !isLockOn;
       const reticle = document.getElementById('lockon-reticle');
       if (isLockOn) {
@@ -970,7 +1273,7 @@
        8. 獵人招式與動作機制 (Combos, Dodges, Items)
        ============================================================== */
     function triggerDodge() {
-      if (gameOver || player.state !== 'idle' || player.stamina < 22) return;
+      if (gameOver || isPaused || player.state !== 'idle' || player.stamina < 22) return;
       player.stamina -= 22;
       player.state = 'dodge';
       player.timer = 0.44;
@@ -979,8 +1282,10 @@
     }
 
     function handleLightAttack() {
-      if (gameOver || player.state !== 'idle' || player.stamina < 12) return;
+      if (gameOver || isPaused || player.state !== 'idle' || player.stamina < 12) return;
       player.stamina -= 12;
+      player.comboStep = nextComboStep(player.comboStep, player.comboTimer > 0);
+      player.comboTimer = 0.9;
       player.state = 'attack_light';
       player.timer = 0.48;
       player.hasHitThisSwing = false;
@@ -988,14 +1293,15 @@
     }
 
     function startCharge() {
-      if (gameOver || player.state !== 'idle' || player.stamina < 30) return;
+      if (gameOver || isPaused || player.state !== 'idle' || player.stamina < 30) return;
       player.isCharging = true;
       player.chargeTime = 0;
+      player.chargeLevel = getChargeLevel(0);
       player.state = 'charging';
     }
 
     function releaseCharge() {
-      if (!player.isCharging) return;
+      if (gameOver || isPaused || !player.isCharging) return;
       player.isCharging = false;
       player.stamina -= 30;
       player.state = 'attack_heavy';
@@ -1005,7 +1311,7 @@
     }
 
     function usePotion() {
-      if (gameOver || player.state !== 'idle' || player.potions <= 0 || player.hp >= player.maxHp) return;
+      if (gameOver || isPaused || player.state !== 'idle' || player.potions <= 0 || player.hp >= player.maxHp) return;
       player.state = 'potion';
       player.timer = 0.7;
       player.potions--;
@@ -1016,7 +1322,7 @@
     }
 
     function useSharpen() {
-      if (gameOver || player.state !== 'idle' || player.sharpness >= 100) return;
+      if (gameOver || isPaused || player.state !== 'idle' || player.sharpness >= 100) return;
       player.state = 'sharpen';
       player.timer = 1.0;
       player.sharpness = 100;
@@ -1026,10 +1332,7 @@
     }
 
     function getCurrentSharpness() {
-      for (const lvl of SHARPNESS_LEVELS) {
-        if (player.sharpness >= lvl.minVal) return lvl;
-      }
-      return SHARPNESS_LEVELS[SHARPNESS_LEVELS.length - 1];
+      return getSharpnessLevel(player.sharpness, SHARPNESS_LEVELS);
     }
 
     function triggerHitstop(duration = 0.08) {
@@ -1063,6 +1366,12 @@
        9. 獵人更新邏輯 (Player Update)
        ============================================================== */
     function updatePlayer(dt) {
+      if (player.comboTimer > 0) {
+        player.comboTimer = Math.max(0, player.comboTimer - dt);
+      } else {
+        player.comboStep = 0;
+      }
+
       // 無敵閃爍反饋
       if (player.invincible > 0) {
         player.invincible -= dt;
@@ -1072,16 +1381,16 @@
       }
 
       // 移動向量依據視角 Yaw 轉換
-      const moveInput = new THREE.Vector3();
+      const moveInput = tempVectors.moveInput.set(0, 0, 0);
       if (keys['w']) moveInput.z -= 1;
       if (keys['s']) moveInput.z += 1;
       if (keys['a']) moveInput.x -= 1;
       if (keys['d']) moveInput.x += 1;
 
-      let moveVec = new THREE.Vector3();
+      const moveVec = tempVectors.moveVector.set(0, 0, 0);
       if (moveInput.lengthSq() > 0) {
         moveInput.normalize();
-        moveVec = moveInput.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraYaw);
+        moveVec.copy(moveInput).applyAxisAngle(upAxis, cameraYaw);
       }
 
       // 狀態分流
@@ -1097,19 +1406,19 @@
         }
       } 
       else if (player.state === 'charging') {
-        player.chargeTime += dt;
-        const chargeLevel = Math.min(3, Math.floor(player.chargeTime / 0.55));
-        const chargeColor = chargeLevel >= 2 ? 0xff4757 : 0xe67e22;
+        player.chargeTime = Math.min(1.65, player.chargeTime + dt);
+        player.chargeLevel = getChargeLevel(player.chargeTime);
+        const chargeColor = player.chargeLevel >= 3 ? 0xff4757 : (player.chargeLevel === 2 ? 0xf39c12 : 0xe67e22);
         blade.material.emissive.setHex(chargeColor);
         weaponPivot.rotation.x = -Math.PI * 0.7;
 
         // 面對魔物緩慢轉向
-        const toBoss = new THREE.Vector3().subVectors(monsterGroup.position, hunterGroup.position);
+        const toBoss = tempVectors.toBoss.subVectors(monsterGroup.position, hunterGroup.position);
         hunterGroup.rotation.y = THREE.MathUtils.lerp(hunterGroup.rotation.y, Math.atan2(toBoss.x, toBoss.z), 4 * dt);
       }
       else if (player.state === 'dodge') {
         player.timer -= dt;
-        const forward = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), hunterGroup.rotation.y);
+        const forward = tempVectors.forward.copy(forwardAxis).applyAxisAngle(upAxis, hunterGroup.rotation.y);
         hunterGroup.position.addScaledVector(forward, player.speed * 2.0 * dt);
         hunterGroup.rotation.x += 16 * dt;
         if (player.timer <= 0) {
@@ -1137,15 +1446,19 @@
         player.timer -= dt;
         const progress = 1 - (player.timer / duration);
 
+        const comboAngle = !isHeavy ? [0, 0.12, -0.12][player.comboStep] : 0;
         weaponPivot.rotation.x = -Math.PI * 0.7 + Math.PI * 1.55 * Math.min(1, progress * 1.4);
+        weaponPivot.rotation.z = comboAngle;
 
         if (!player.hasHitThisSwing && progress > 0.3 && progress < 0.7) {
-          checkHunterAttackHit(isHeavy);
+          checkHunterAttackHit(isHeavy, player.chargeLevel, !isHeavy ? [1, 1.08, 1.2][player.comboStep] : 1);
         }
 
         if (player.timer <= 0) {
           player.state = 'idle';
           weaponPivot.rotation.x = 0;
+          weaponPivot.rotation.z = 0;
+          player.chargeLevel = 1;
           blade.material.emissive.setHex(0x000000);
         }
       }
@@ -1158,43 +1471,55 @@
     /* ==============================================================
        10. 獵人判定命中魔物 (弱點與部位破壞、斬味消耗)
        ============================================================== */
-    function checkHunterAttackHit(isHeavy) {
-      const forward = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), hunterGroup.rotation.y);
-      const hitCenter = hunterGroup.position.clone().addScaledVector(forward, 3.4);
+    function checkHunterAttackHit(isHeavy, chargeLevel = 1, comboMultiplier = 1) {
+      const forward = tempVectors.forward.copy(forwardAxis).applyAxisAngle(upAxis, hunterGroup.rotation.y);
+      const hitCenter = tempVectors.hitCenter.copy(hunterGroup.position).addScaledVector(forward, 3.4);
 
       // 計算與魔物各部位距離
       const distToMonster = hitCenter.distanceTo(monsterGroup.position);
-      if (distToMonster < 6.8) {
+      if (isWithinRange(distToMonster, 6.8)) {
         player.hasHitThisSwing = true;
 
         // 斬味倍率
         const sharpness = getCurrentSharpness();
         player.sharpness = Math.max(0, player.sharpness - (isHeavy ? 2.5 : 1.2));
 
-        let baseDamage = isHeavy ? (85 + Math.random() * 25) : (32 + Math.random() * 12);
-        let finalDamage = Math.floor(baseDamage * sharpness.mult);
+        const baseDamage = isHeavy ? (85 + Math.random() * 25) : (32 + Math.random() * 12);
+        const chargeMultiplier = isHeavy ? [1, 1.15, 1.35, 1.6][Math.max(1, Math.min(3, chargeLevel))] : 1;
 
         // 弱點判定：判定是打中頭部還是身軀/尾巴
-        const headWorldPos = new THREE.Vector3();
+        const headWorldPos = tempVectors.headWorld;
         headGroup.getWorldPosition(headWorldPos);
         const distToHead = hitCenter.distanceTo(headWorldPos);
 
-        const tailWorldPos = new THREE.Vector3();
+        const tailWorldPos = tempVectors.tailWorld;
         tailGroup.getWorldPosition(tailWorldPos);
         const distToTail = hitCenter.distanceTo(tailWorldPos);
 
         let hitWeakpoint = false;
+        let weakpointMultiplier = 1;
         if (distToHead < 3.2) {
-          finalDamage = Math.floor(finalDamage * 1.35); // 頭部弱點倍率
           hitWeakpoint = true;
+          weakpointMultiplier = 1.35;
+        }
+
+        const finalDamage = calculateAttackDamage({
+          baseDamage,
+          sharpnessMultiplier: sharpness.mult,
+          weakpointMultiplier,
+          chargeMultiplier,
+          comboMultiplier
+        });
+
+        if (hitWeakpoint) {
           monster.headHp -= finalDamage;
           if (monster.headHp <= 0 && !monster.isHeadBroken) {
             monster.isHeadBroken = true;
             hornLeft.visible = false;
             hornRight.visible = false;
             showBanner("💥【部位破壞】轟龍頭角折斷！");
-            document.getElementById('part-head').className = 'part-broken';
-            document.getElementById('part-head').innerText = '頭部角: 已折斷 💥';
+            ui.partHead.className = 'part-broken';
+            ui.partHead.innerText = '頭部角: 已折斷 💥';
           }
         } else if (distToTail < 3.2 && !monster.isTailBroken) {
           monster.tailHp -= finalDamage;
@@ -1202,8 +1527,8 @@
             monster.isTailBroken = true;
             tailGroup.scale.set(0.2, 0.2, 0.2); // 斷尾縮小表現
             showBanner("🗡️【斷尾成功】轟龍尾巴已切斷！");
-            document.getElementById('part-tail').className = 'part-broken';
-            document.getElementById('part-tail').innerText = '尾巴: 已斷裂 🗡️';
+            ui.partTail.className = 'part-broken';
+            ui.partTail.innerText = '尾巴: 已斷裂 🗡️';
           }
         }
 
@@ -1239,8 +1564,8 @@
     function updateMonster(dt) {
       if (monster.hp <= 0) return;
 
-      const bossStateTag = document.getElementById('boss-state-tag');
-      const toHunter = new THREE.Vector3().subVectors(hunterGroup.position, monsterGroup.position);
+      const bossStateTag = ui.bossStateTag;
+      const toHunter = tempVectors.toHunter.subVectors(hunterGroup.position, monsterGroup.position);
       toHunter.y = 0;
       const dist = toHunter.length();
 
@@ -1259,12 +1584,12 @@
         monster.enrageTimer -= dt;
         eyeLightL.intensity = 2.5;
         eyeLightR.intensity = 2.5;
-        document.getElementById('boss-enrage-badge').style.display = 'inline';
+        ui.enrageBadge.style.display = 'inline';
         if (monster.enrageTimer <= 0) {
           monster.isEnraged = false;
           eyeLightL.intensity = 0;
           eyeLightR.intensity = 0;
-          document.getElementById('boss-enrage-badge').style.display = 'none';
+          ui.enrageBadge.style.display = 'none';
         }
       }
 
@@ -1324,7 +1649,8 @@
         monster.timer -= dt;
         monsterGroup.position.addScaledVector(monster.chargeDir, 28 * speedMult * dt);
 
-        if (!monster.hasDealtDamage && dist < 4.8 && player.invincible <= 0) {
+        const currentDist = hunterGroup.position.distanceTo(monsterGroup.position);
+        if (!monster.hasDealtDamage && currentDist < 4.8 && player.invincible <= 0) {
           monster.hasDealtDamage = true;
           damagePlayer(32);
         }
@@ -1354,7 +1680,8 @@
 
         // 若尾巴被切斷，甩尾半徑縮小
         const spinRadius = monster.isTailBroken ? 5.8 : 8.2;
-        if (!monster.hasDealtDamage && dist < spinRadius && player.invincible <= 0) {
+        const currentDist = hunterGroup.position.distanceTo(monsterGroup.position);
+        if (!monster.hasDealtDamage && currentDist < spinRadius && player.invincible <= 0) {
           monster.hasDealtDamage = true;
           damagePlayer(monster.isTailBroken ? 18 : 26);
         }
@@ -1396,6 +1723,13 @@
       monster.isEnraged = true;
       monster.enrageTimer = 18.0; // 憤怒 18 秒
 
+      if (player.isCharging) {
+        player.isCharging = false;
+        player.chargeTime = 0;
+        player.chargeLevel = 1;
+        player.state = 'idle';
+      }
+
       audio.playRoar();
       triggerScreenShake(0.8, 1.2);
       particleSystem.spawnShockwave(monsterGroup.position, 28, 0xff7675);
@@ -1426,7 +1760,7 @@
     function updateCamera(dt) {
       if (isLockOn) {
         // 鎖定模式：相機平滑朝向獵人與魔物連線
-        const toBoss = new THREE.Vector3().subVectors(monsterGroup.position, hunterGroup.position);
+        const toBoss = tempVectors.toBoss.subVectors(monsterGroup.position, hunterGroup.position);
         toBoss.y = 0;
         if (toBoss.lengthSq() > 0) {
           cameraYaw = THREE.MathUtils.lerp(cameraYaw, Math.atan2(toBoss.x, toBoss.z) + Math.PI, 6 * dt);
@@ -1434,7 +1768,7 @@
 
         // 更新螢幕鎖定準星位置
         const reticle = document.getElementById('lockon-reticle');
-        const bossScreenPos = monsterGroup.position.clone();
+        const bossScreenPos = tempVectors.bossScreen.copy(monsterGroup.position);
         bossScreenPos.y += 2.8;
         bossScreenPos.project(camera);
         const rx = (bossScreenPos.x * 0.5 + 0.5) * window.innerWidth;
@@ -1448,7 +1782,7 @@
       const camY = Math.sin(cameraPitch) * camDist + 3.2;
       const horizDist = Math.cos(cameraPitch) * camDist;
 
-      const targetCamPos = new THREE.Vector3(
+      const targetCamPos = tempVectors.targetCamera.set(
         hunterGroup.position.x + Math.sin(cameraYaw) * horizDist,
         hunterGroup.position.y + camY,
         hunterGroup.position.z + Math.cos(cameraYaw) * horizDist
@@ -1465,7 +1799,7 @@
 
       camera.position.lerp(targetCamPos, 0.12);
 
-      const lookTarget = hunterGroup.position.clone();
+      const lookTarget = tempVectors.lookTarget.copy(hunterGroup.position);
       lookTarget.y += 2.0;
       if (isLockOn) {
         lookTarget.lerp(monsterGroup.position, 0.35);
@@ -1477,29 +1811,42 @@
        13. HUD 儀表板更新
        ============================================================== */
     function updateHUD() {
+      const sharpness = getCurrentSharpness();
+      const snapshot = [
+        Math.ceil(player.hp),
+        Math.floor(player.stamina),
+        player.potions,
+        player.sharpness.toFixed(1),
+        Math.ceil(monster.hp),
+        sharpness.name
+      ].join('|');
+      if (snapshot === lastHudSnapshot) return;
+      lastHudSnapshot = snapshot;
+
       // 獵人 HP & 耐力
-      document.getElementById('hp-bar').style.width = `${(player.hp / player.maxHp) * 100}%`;
-      document.getElementById('hp-text').innerText = `${Math.ceil(player.hp)} / ${player.maxHp}`;
-      document.getElementById('stamina-bar').style.width = `${(player.stamina / player.maxStamina) * 100}%`;
-      document.getElementById('stamina-text').innerText = `${Math.floor(player.stamina)} / ${player.maxStamina}`;
-      document.getElementById('potion-count').innerText = player.potions;
+      ui.hpBar.style.width = `${(player.hp / player.maxHp) * 100}%`;
+      ui.hpText.innerText = `${Math.ceil(player.hp)} / ${player.maxHp}`;
+      ui.staminaBar.style.width = `${(player.stamina / player.maxStamina) * 100}%`;
+      ui.staminaText.innerText = `${Math.floor(player.stamina)} / ${player.maxStamina}`;
+      ui.potionCount.innerText = player.potions;
 
       // 斬味
-      const sharpness = getCurrentSharpness();
-      const sharpFill = document.getElementById('sharpness-fill');
-      sharpFill.style.width = `${player.sharpness}%`;
-      sharpFill.style.backgroundColor = sharpness.color;
-      document.getElementById('sharpness-text').innerText = `${sharpness.name} (${sharpness.mult}x)`;
-      document.getElementById('sharpness-text').style.color = sharpness.color;
+      ui.sharpnessFill.style.width = `${player.sharpness}%`;
+      ui.sharpnessFill.style.backgroundColor = sharpness.color;
+      ui.sharpnessText.innerText = `${sharpness.name} (${sharpness.mult}x)`;
+      ui.sharpnessText.style.color = sharpness.color;
 
       // Boss HP
       const bossHpPercent = Math.max(0, (monster.hp / monster.maxHp) * 100);
-      document.getElementById('boss-hp-bar').style.width = `${bossHpPercent}%`;
-      document.getElementById('boss-hp-text').innerText = `${Math.ceil(monster.hp)} / ${monster.maxHp}`;
+      ui.bossHpBar.style.width = `${bossHpPercent}%`;
+      ui.bossHpText.innerText = `${Math.ceil(monster.hp)} / ${monster.maxHp}`;
     }
 
     function endGame(victory) {
       gameOver = true;
+      isPaused = false;
+      resetInputState();
+      ui.pauseButton.style.display = 'none';
       const overlay = document.getElementById('message-overlay');
       const mainMsg = document.getElementById('main-msg');
       overlay.style.display = 'flex';
@@ -1522,14 +1869,14 @@
       const rawDt = Math.min(clock.getDelta(), 0.1);
 
       // Hitstop 卡肉頓幀處理
-      if (hitstopTimer > 0) {
+      if (hitstopTimer > 0 && !isPaused) {
         hitstopTimer -= rawDt;
         // 頓幀期間僅渲染相機，角色邏輯暫停，產生強大打擊停留感
         renderer.render(scene, camera);
         return;
       }
 
-      if (!gameOver) {
+      if (!gameOver && !isPaused) {
         updatePlayer(rawDt);
         updateMonster(rawDt);
         particleSystem.update(rawDt);
@@ -1544,6 +1891,7 @@
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, window.innerWidth < 900 ? 1.25 : 1.75));
     });
 
     animate();
