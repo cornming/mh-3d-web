@@ -1,10 +1,11 @@
 # 3D 魔物獵人 Web 原型
 
-這是一個以 Three.js 與原生 Web Audio API 製作的純前端 3D 動作遊戲原型。遊戲執行時不需要 Node.js、npm 或建置工具；主要畫面與遊戲迴圈在 `index.html`，共用規則則由 `src/game-rules.mjs` 提供。Three.js 由 CDN 載入。
+這是一個以 Three.js、Blender GLB 資產與原生 Web Audio API 製作的純前端 3D 動作遊戲原型。遊戲執行時不需要 Node.js、npm 或建置工具；主要畫面與遊戲迴圈在 `index.html`，共用規則則由 `src/game-rules.mjs` 提供。Three.js 與 GLTFLoader 由 CDN 載入，角色與魔物資產由 `assets/models/` 提供。
 
 ## 目前功能
 
-- 第三人稱 3D 場景、獵人與魔物模型、光照、陰影、霧效與場景邊界。
+- 原創生態系奇幻視覺：骨骼與甲殼工藝、自然獵場地表、植被、骨骸遺跡、光照、陰影與霧效。
+- Blender 產出的獵人、骨製大劍與甲殼魔物 GLB 模型，並保留部位節點供頭部與尾部破壞判定使用。
 - 獵人移動、翻滾無敵時間、三段輕攻擊連段、依蓄力時間分級的重斬、回覆藥與砥石。
 - 斬味等級與傷害倍率：白斬 `1.32x`、藍斬 `1.20x`、綠斬 `1.05x`、黃斬 `0.85x`。
 - 魔物追蹤、龍車、迴旋甩尾、冷卻、倒地硬直，以及依血量門檻觸發的龍吼與限時狂暴。
@@ -53,12 +54,24 @@ mh-3d-web/
 ├─ index.html                 # HUD、樣式、Three.js 場景與主要遊戲邏輯
 ├─ mh-3d-web.ps1              # 唯讀的本機 PowerShell 靜態伺服器啟動器
 ├─ package.json               # Node.js 檢查與測試命令
-├─ src/game-rules.mjs        # 可獨立測試的戰鬥規則函式
-├─ tests/game-rules.test.mjs # Node 原生測試
+├─ src/game-rules.mjs         # 可獨立測試的戰鬥規則函式
+├─ tests/game-rules.test.mjs  # Node 原生測試
+├─ assets/models/             # Blender 匯出的 hunter.glb 與 monster.glb
+├─ tools/generate_assets.py   # 以 Blender 背景模式重新產生 GLB 資產
 └─ README.md                 # 使用與功能說明
 ```
 
-`index.html` 內的程式區塊目前依序包含程式化音效、粒子效果、Three.js 場景與模型、玩家狀態及輸入、魔物 AI、攻擊判定、相機、HUD 與主遊戲迴圈，並以 ES module 匯入 `src/game-rules.mjs`。外部執行期依賴是帶有完整性驗證的 CDN Three.js `r128`；若無法連線至 CDN，頁面會顯示載入錯誤，3D 遊戲畫面無法初始化。
+`index.html` 內的程式區塊目前依序包含程式化音效、粒子效果、自然獵場、GLB 模型載入、玩家狀態及輸入、魔物 AI、攻擊判定、相機、HUD 與主遊戲迴圈，並以 ES module 匯入 `src/game-rules.mjs`。外部執行期依賴是帶有完整性驗證的 CDN Three.js `r128` 與 GLTFLoader；若無法連線至 CDN，頁面會顯示載入錯誤，3D 遊戲畫面無法初始化。
+
+## Blender 資產
+
+目前的模型是用 Blender Python 腳本程序化產生的原創低多邊形資產，不依賴外部版權模型。若已安裝 Blender，可在專案根目錄執行：
+
+```powershell
+& 'C:\Program Files\Blender Foundation\Blender 5.2\blender.exe' --background --python tools\generate_assets.py
+```
+
+腳本會重新產生 `assets/models/hunter.glb` 與 `assets/models/monster.glb`。模型中的 `weaponPivot`、`weapon_blade`、`head`、`tail`、`horn_l` 與 `horn_r` 節點名稱是遊戲互動整合的一部分，修改模型時請保留這些名稱。
 
 ## 技術備註
 

@@ -371,6 +371,25 @@
       100% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
     }
 
+    #impact-flash {
+      position: absolute;
+      inset: 0;
+      background: rgba(255, 220, 130, 0.28);
+      pointer-events: none;
+      opacity: 0;
+      z-index: 95;
+      mix-blend-mode: screen;
+    }
+
+    #impact-flash.active {
+      animation: impactFlash 0.16s ease-out forwards;
+    }
+
+    @keyframes impactFlash {
+      0% { opacity: 0.9; }
+      100% { opacity: 0; }
+    }
+
     /* 浮動傷害數字 */
     .damage-number {
       position: absolute;
@@ -540,6 +559,7 @@
   </div>
 
   <div id="lockon-reticle"></div>
+  <div id="impact-flash"></div>
   <div id="banner-notify"></div>
 
   <!-- 結算畫面 -->
@@ -569,6 +589,7 @@
 
   <!-- 引入 Three.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js" integrity="sha384-fljlqkjWlmSFjkESkQvm77heIZpoWmXEOzlCA7kOpGUH+95Zk0yGfQieWM2q136E" crossorigin="anonymous"></script>
   <script type="module">
     import {
       SHARPNESS_LEVELS,
@@ -580,6 +601,7 @@
     } from './src/game-rules.mjs';
 
     const runtimeError = document.getElementById('runtime-error');
+    const impactFlash = document.getElementById('impact-flash');
     const showRuntimeError = (message) => {
       runtimeError.innerText = message;
       runtimeError.hidden = false;
@@ -591,6 +613,7 @@
     }
 
     const THREE = window.THREE;
+    const assetLoader = THREE.GLTFLoader ? new THREE.GLTFLoader() : null;
     /* ==============================================================
        1. 程式化音效合成器 (Web Audio API Procedural Sound Synthesizer)
        擷取自開源 Web 動作遊戲優勢：免外掛資源、零延遲、高回饋
@@ -873,8 +896,8 @@
        ============================================================== */
     const container = document.getElementById('canvas-container');
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x131920);
-    scene.fog = new THREE.FogExp2(0x131920, 0.011);
+    scene.background = new THREE.Color(0x18251f);
+    scene.fog = new THREE.FogExp2(0x18251f, 0.014);
 
     const camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 500);
     let renderer;
@@ -886,12 +909,17 @@
     }
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, window.innerWidth < 900 ? 1.25 : 1.75));
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.08;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(renderer.domElement);
 
     const ambientLight = new THREE.AmbientLight(0xdfe6e9, 0.55);
     scene.add(ambientLight);
+    const hemisphereLight = new THREE.HemisphereLight(0x9cbfa8, 0x21170f, 0.72);
+    scene.add(hemisphereLight);
 
     const sunLight = new THREE.DirectionalLight(0xfffae6, 1.1);
     sunLight.position.set(45, 65, 35);
@@ -908,21 +936,74 @@
     sunLight.shadow.bias = -0.0005;
     scene.add(sunLight);
 
-    // 戰場地面與格線
+    const rimLight = new THREE.DirectionalLight(0x7eabc5, 0.48);
+    rimLight.position.set(-40, 22, -55);
+    scene.add(rimLight);
+
+    // 自然獵場地表
     const groundGeo = new THREE.PlaneGeometry(150, 150);
     const groundMat = new THREE.MeshStandardMaterial({
-      color: 0x242c35,
+      color: 0x26382c,
       roughness: 0.85,
-      metalness: 0.1
+      metalness: 0.02
     });
     const ground = new THREE.Mesh(groundGeo, groundMat);
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
     scene.add(ground);
 
-    const gridHelper = new THREE.GridHelper(150, 50, 0x3d4b5c, 0x1b232c);
-    gridHelper.position.y = 0.03;
-    scene.add(gridHelper);
+    const clearingMat = new THREE.MeshStandardMaterial({
+      color: 0x41533b,
+      roughness: 1.0,
+      transparent: true,
+      opacity: 0.52,
+      depthWrite: false
+    });
+    const clearing = new THREE.Mesh(new THREE.CircleGeometry(31, 64), clearingMat);
+    clearing.rotation.x = -Math.PI / 2;
+    clearing.position.y = 0.025;
+    scene.add(clearing);
+
+    const foliageGroup = new THREE.Group();
+    scene.add(foliageGroup);
+    const grassMat = new THREE.MeshStandardMaterial({ color: 0x5f7d42, roughness: 0.95 });
+    const mossMat = new THREE.MeshStandardMaterial({ color: 0x769653, roughness: 1.0 });
+    for (let i = 0; i < 58; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const distance = 9 + Math.random() * 25;
+      const height = 0.35 + Math.random() * 0.85;
+      const grass = new THREE.Mesh(new THREE.ConeGeometry(0.16 + Math.random() * 0.12, height, 4), grassMat);
+      grass.position.set(Math.cos(angle) * distance, height / 2, Math.sin(angle) * distance);
+      grass.rotation.y = Math.random() * Math.PI;
+      grass.castShadow = true;
+      foliageGroup.add(grass);
+    }
+    for (let i = 0; i < 18; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const distance = 5 + Math.random() * 28;
+      const patch = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random() * 0.7, 7), mossMat);
+      patch.rotation.x = -Math.PI / 2;
+      patch.position.set(Math.cos(angle) * distance, 0.035, Math.sin(angle) * distance);
+      foliageGroup.add(patch);
+    }
+
+    const boneMat = new THREE.MeshStandardMaterial({ color: 0x8c7046, roughness: 0.6 });
+    const boneSite = new THREE.Group();
+    boneSite.position.set(-17, 0, -8);
+    for (let i = 0; i < 5; i++) {
+      const rib = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.24, 3.8 + i * 0.2, 6), boneMat);
+      rib.position.set((i - 2) * 0.9, 1.05 + Math.abs(i - 2) * 0.12, 0);
+      rib.rotation.z = (i - 2) * 0.22;
+      rib.rotation.x = Math.PI / 2;
+      rib.castShadow = true;
+      boneSite.add(rib);
+    }
+    const skull = new THREE.Mesh(new THREE.IcosahedronGeometry(1.45, 1), boneMat);
+    skull.position.set(0, 1.35, 1.8);
+    skull.scale.set(1.2, 0.82, 1.45);
+    skull.castShadow = true;
+    boneSite.add(skull);
+    scene.add(boneSite);
 
     // 邊界巨石柱環境裝飾
     const rockMat = new THREE.MeshStandardMaterial({ color: 0x4b5866, roughness: 0.9 });
@@ -948,7 +1029,7 @@
 
     // 獵人身體
     const armorMat = new THREE.MeshStandardMaterial({ color: 0x2c3e50, roughness: 0.4, metalness: 0.3 });
-    const hunterBody = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.8, 0.9), armorMat);
+    let hunterBody = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.8, 0.9), armorMat);
     hunterBody.position.y = 0.9;
     hunterBody.castShadow = true;
     hunterGroup.add(hunterBody);
@@ -961,7 +1042,7 @@
     hunterGroup.add(hunterHead);
 
     // 大劍關節手部 (Weapon Pivot)
-    const weaponPivot = new THREE.Group();
+    let weaponPivot = new THREE.Group();
     weaponPivot.position.set(0.65, 1.35, 0);
     hunterGroup.add(weaponPivot);
 
@@ -971,7 +1052,7 @@
     guard.position.y = 0.45;
 
     const bladeMat = new THREE.MeshStandardMaterial({ color: 0xdfe6e9, metalness: 0.85, roughness: 0.2 });
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.4, 3.8, 0.14), bladeMat);
+    let blade = new THREE.Mesh(new THREE.BoxGeometry(0.4, 3.8, 0.14), bladeMat);
     blade.position.y = 2.35;
     blade.castShadow = true;
 
@@ -988,6 +1069,7 @@
     scene.add(monsterGroup);
 
     const mSkinMat = new THREE.MeshStandardMaterial({ color: 0x962d22, roughness: 0.55 });
+    const monsterMaterials = new Set([mSkinMat]);
 
     // 主身軀
     const mBody = new THREE.Mesh(new THREE.BoxGeometry(4.0, 3.0, 7.0), mSkinMat);
@@ -996,7 +1078,7 @@
     monsterGroup.add(mBody);
 
     // 頭部群組 (供破壞判定)
-    const headGroup = new THREE.Group();
+    let headGroup = new THREE.Group();
     headGroup.position.set(0, 3.0, 4.3);
     const mHeadMesh = new THREE.Mesh(new THREE.BoxGeometry(2.8, 2.4, 3.0), mSkinMat);
     mHeadMesh.castShadow = true;
@@ -1004,11 +1086,11 @@
 
     // 雙角
     const hornMat = new THREE.MeshStandardMaterial({ color: 0xf1c40f, roughness: 0.3 });
-    const hornLeft = new THREE.Mesh(new THREE.ConeGeometry(0.38, 2.0, 6), hornMat);
+    let hornLeft = new THREE.Mesh(new THREE.ConeGeometry(0.38, 2.0, 6), hornMat);
     hornLeft.position.set(1.2, 1.2, 0.3);
     hornLeft.rotation.x = Math.PI / 3.8;
     hornLeft.castShadow = true;
-    const hornRight = hornLeft.clone();
+    let hornRight = hornLeft.clone();
     hornRight.position.x = -1.2;
     headGroup.add(hornLeft, hornRight);
     monsterGroup.add(headGroup);
@@ -1021,7 +1103,7 @@
     monsterGroup.add(mWings);
 
     // 尾部群組 (供斷尾部位破壞)
-    const tailGroup = new THREE.Group();
+    let tailGroup = new THREE.Group();
     tailGroup.position.set(0, 2.1, -5.5);
     const mTailMesh = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.3, 5.8), mSkinMat);
     mTailMesh.castShadow = true;
@@ -1036,6 +1118,78 @@
     headGroup.add(eyeLightL, eyeLightR);
 
     monsterGroup.position.set(0, 0, -12);
+
+    const proceduralHunterBody = hunterBody;
+    const proceduralHunterHead = hunterHead;
+    const proceduralHunterWeaponPivot = weaponPivot;
+    const proceduralHunterSword = swordGroup;
+    const proceduralMonsterBody = mBody;
+    const proceduralMonsterHead = headGroup;
+    const proceduralMonsterTail = tailGroup;
+    const proceduralMonsterWings = mWings;
+    let hunterVisual = null;
+    let monsterVisual = null;
+
+    const hideMeshes = (object) => {
+      object.traverse((child) => {
+        if (child.isMesh) child.visible = false;
+      });
+    };
+
+    const prepareLoadedModel = (model, trackMaterials = false) => {
+      model.traverse((child) => {
+        if (!child.isMesh) return;
+        child.castShadow = true;
+        child.receiveShadow = true;
+        if (child.material) {
+          if (trackMaterials && child.material.emissive) monsterMaterials.add(child.material);
+        }
+      });
+      return model;
+    };
+
+    const loadVisualAssets = () => {
+      if (!assetLoader) return;
+
+      assetLoader.load('./assets/models/hunter.glb', (gltf) => {
+        const model = prepareLoadedModel(gltf.scene);
+        model.name = 'hunterVisual';
+        hunterVisual = model;
+        hunterGroup.add(model);
+        hideMeshes(proceduralHunterBody);
+        hideMeshes(proceduralHunterHead);
+        proceduralHunterWeaponPivot.visible = false;
+        proceduralHunterSword.visible = false;
+        hunterBody = model.getObjectByName('chest') || hunterBody;
+        blade = model.getObjectByName('weapon_blade') || blade;
+        weaponPivot = model.getObjectByName('weaponPivot') || weaponPivot;
+      }, undefined, (error) => {
+        console.warn('Hunter asset failed to load; using procedural fallback.', error);
+      });
+
+      assetLoader.load('./assets/models/monster.glb', (gltf) => {
+        const model = prepareLoadedModel(gltf.scene, true);
+        model.name = 'monsterVisual';
+        monsterVisual = model;
+        monsterGroup.add(model);
+        hideMeshes(proceduralMonsterBody);
+        hideMeshes(proceduralMonsterHead);
+        hideMeshes(proceduralMonsterTail);
+        hideMeshes(proceduralMonsterWings);
+        headGroup = model.getObjectByName('head') || headGroup;
+        tailGroup = model.getObjectByName('tail') || tailGroup;
+        hornLeft = model.getObjectByName('horn_l') || hornLeft;
+        hornRight = model.getObjectByName('horn_r') || hornRight;
+      }, undefined, (error) => {
+        console.warn('Monster asset failed to load; using procedural fallback.', error);
+      });
+    };
+
+    loadVisualAssets();
+
+    const setMonsterEmissive = (color) => {
+      monsterMaterials.forEach((material) => material.emissive.setHex(color));
+    };
 
     /* ==============================================================
        6. 狀態系統與數值 (Player & Boss Data)
@@ -1344,6 +1498,13 @@
       screenShakeTimer = duration;
     }
 
+    function triggerImpactFlash(isHeavy = false) {
+      impactFlash.style.background = isHeavy ? 'rgba(255, 145, 72, 0.32)' : 'rgba(255, 220, 130, 0.24)';
+      impactFlash.classList.remove('active');
+      void impactFlash.offsetWidth;
+      impactFlash.classList.add('active');
+    }
+
     function spawnFloatingText(worldPos, text, color = "#ffeb3b") {
       const pos = worldPos.clone();
       pos.y += 3.8;
@@ -1391,6 +1552,13 @@
       if (moveInput.lengthSq() > 0) {
         moveInput.normalize();
         moveVec.copy(moveInput).applyAxisAngle(upAxis, cameraYaw);
+      }
+
+      if (hunterVisual) {
+        const moving = moveVec.lengthSq() > 0;
+        const bob = Math.sin(clock.elapsedTime * (moving ? 11 : 2.6)) * (moving ? 0.045 : 0.018);
+        hunterVisual.position.y = bob;
+        hunterVisual.rotation.z = player.state === 'charging' ? -0.035 : 0;
       }
 
       // 狀態分流
@@ -1538,6 +1706,7 @@
         // 核心打擊反饋：Hitstop (卡肉感) + ScreenShake (震屏) + 火花粒子
         triggerHitstop(isHeavy ? 0.09 : 0.05);
         triggerScreenShake(isHeavy ? 0.65 : 0.35, 0.22);
+        triggerImpactFlash(isHeavy);
         particleSystem.spawnHitSparks(hitCenter, isHeavy ? 24 : 14, isHeavy);
         audio.playHit(isHeavy);
 
@@ -1563,6 +1732,10 @@
        ============================================================== */
     function updateMonster(dt) {
       if (monster.hp <= 0) return;
+
+      if (monsterVisual) {
+        monsterVisual.position.y = Math.sin(clock.elapsedTime * 2.1) * 0.06;
+      }
 
       const bossStateTag = ui.bossStateTag;
       const toHunter = tempVectors.toHunter.subVectors(hunterGroup.position, monsterGroup.position);
@@ -1634,10 +1807,10 @@
         monster.timer -= dt;
         // 蓄力前搖後縮
         monsterGroup.position.addScaledVector(monster.chargeDir, -2.8 * dt);
-        mSkinMat.emissive.setHex((Math.floor(monster.timer * 18) % 2 === 0) ? 0xff0000 : 0x000000);
+        setMonsterEmissive((Math.floor(monster.timer * 18) % 2 === 0) ? 0xff0000 : 0x000000);
 
         if (monster.timer <= 0) {
-          mSkinMat.emissive.setHex(0x000000);
+          setMonsterEmissive(0x000000);
           monster.state = 'charge';
           monster.timer = 1.1;
           monster.hasDealtDamage = false;
@@ -1664,10 +1837,10 @@
         bossStateTag.innerText = '⚠️ 警示：擺頭大甩尾！';
         bossStateTag.style.background = '#e17055';
         monster.timer -= dt;
-        mSkinMat.emissive.setHex((Math.floor(monster.timer * 18) % 2 === 0) ? 0xf39c12 : 0x000000);
+        setMonsterEmissive((Math.floor(monster.timer * 18) % 2 === 0) ? 0xf39c12 : 0x000000);
 
         if (monster.timer <= 0) {
-          mSkinMat.emissive.setHex(0x000000);
+          setMonsterEmissive(0x000000);
           monster.state = 'spin';
           monster.timer = 0.52;
           monster.hasDealtDamage = false;
