@@ -234,6 +234,27 @@
       z-index: 400;
     }
 
+    #asset-loading {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at center, rgba(45, 72, 56, 0.68), rgba(8, 16, 13, 0.94));
+      color: #f5f6fa;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.85);
+      pointer-events: auto;
+      z-index: 180;
+      transition: opacity 0.35s ease;
+    }
+
+    #asset-loading.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
     #pause-button {
       position: absolute;
       top: 16px;
@@ -250,10 +271,73 @@
     }
 
     #pause-button:focus-visible,
+    #save-controls button:focus-visible,
     .touch-btn:focus-visible,
     .sub-btn:focus-visible {
       outline: 3px solid #74b9ff;
       outline-offset: 2px;
+    }
+
+    #save-controls {
+      position: absolute;
+      top: 56px;
+      left: 20px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      z-index: 210;
+      pointer-events: auto;
+    }
+
+    #save-controls button {
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 6px;
+      padding: 6px 10px;
+      background: rgba(18, 22, 28, 0.88);
+      color: #fff;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    #save-controls button:hover {
+      background: rgba(52, 73, 94, 0.95);
+    }
+
+    #save-status {
+      max-width: 240px;
+      color: #d2dae2;
+      font-size: 11px;
+      text-shadow: 1px 1px 2px #000;
+    }
+
+    #weapon-controls {
+      position: absolute;
+      top: 92px;
+      left: 20px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      z-index: 210;
+      color: #e9eef2;
+      font-size: 12px;
+      text-shadow: 1px 1px 2px #000;
+      pointer-events: auto;
+    }
+
+    #weapon-controls button {
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 6px;
+      padding: 5px 9px;
+      background: rgba(18, 22, 28, 0.88);
+      color: #fff;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    #weapon-controls button.active {
+      border-color: #ffd32a;
+      background: rgba(156, 98, 20, 0.95);
+      box-shadow: 0 0 12px rgba(255, 211, 42, 0.34);
     }
 
     #touch-controls {
@@ -302,6 +386,16 @@
       touch-action: none;
     }
 
+    .touch-btn[data-action="lock"] {
+      background: rgba(52, 73, 94, 0.86);
+    }
+
+    .touch-btn.active {
+      border-color: #74b9ff;
+      background: rgba(41, 128, 185, 0.92);
+      box-shadow: 0 0 14px rgba(116, 185, 255, 0.55);
+    }
+
     @media (pointer: coarse), (max-width: 700px) {
       #hud {
         top: 8px;
@@ -333,6 +427,22 @@
         bottom: 8px;
         left: auto;
         transform: none;
+      }
+
+      #save-controls {
+        top: 214px;
+        left: 8px;
+        right: 8px;
+        justify-content: flex-start;
+      }
+
+      #weapon-controls {
+        top: 252px;
+        left: 8px;
+      }
+
+      #save-status {
+        max-width: 150px;
       }
 
       #touch-controls {
@@ -383,6 +493,49 @@
 
     #impact-flash.active {
       animation: impactFlash 0.16s ease-out forwards;
+    }
+
+    #damage-vignette {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0;
+      z-index: 94;
+      background: radial-gradient(ellipse at center, transparent 34%, rgba(255, 71, 87, 0.05) 58%, rgba(192, 57, 43, 0.68) 100%);
+      mix-blend-mode: screen;
+    }
+
+    #damage-vignette.active {
+      animation: damageVignette 0.42s ease-out forwards;
+    }
+
+    @keyframes damageVignette {
+      0% { opacity: 0.95; }
+      100% { opacity: 0; }
+    }
+
+    #damage-direction {
+      position: absolute;
+      width: 0;
+      height: 0;
+      border-left: 15px solid transparent;
+      border-right: 15px solid transparent;
+      border-bottom: 30px solid rgba(255, 71, 87, 0.92);
+      filter: drop-shadow(0 0 8px rgba(255, 71, 87, 0.85));
+      pointer-events: none;
+      display: none;
+      z-index: 97;
+    }
+
+    #damage-direction.active {
+      display: block;
+      animation: damageDirection 0.55s ease-out forwards;
+    }
+
+    @keyframes damageDirection {
+      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6) rotate(var(--damage-angle)); }
+      18% { opacity: 1; transform: translate(-50%, -50%) scale(1.1) rotate(var(--damage-angle)); }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(0.88) rotate(var(--damage-angle)); }
     }
 
     @keyframes impactFlash {
@@ -496,6 +649,7 @@
 
   <div id="audio-tip">🔊 點擊畫面即可啟用打擊與咆哮合成音效</div>
   <div id="runtime-error" role="alert" aria-live="assertive" hidden></div>
+  <div id="asset-loading" role="status" aria-live="polite">🌿 正在載入 Blender 獵場與生物資產…</div>
 
   <!-- HUD 面板 -->
   <div id="hud">
@@ -523,6 +677,7 @@
       <div class="item-dock">
         <div class="item-pill">🧪 回覆藥: <b id="potion-count">3</b>/3 <span class="key-badge">E</span></div>
         <div class="item-pill">🪨 砥石磨刀 <span class="key-badge">R</span></div>
+        <div class="item-pill" id="hunt-stats-pill">🏆 戰績: <b id="stats-summary">0勝 0敗</b></div>
       </div>
     </div>
 
@@ -550,16 +705,17 @@
   <!-- 操作手冊 -->
   <div id="controls-hint">
     <b>🎮 獵人狩獵指南</b><br>
-    • <span class="key-badge">W</span><span class="key-badge">A</span><span class="key-badge">S</span><span class="key-badge">D</span> 移動獵人<br>
-    • <span class="key-badge">Space</span> 翻滾閃避（無敵幀＋調整站位）<br>
-    • <span class="key-badge">J</span> 或 <span class="key-badge">左鍵</span> 輕砍三連段：縱斬 ➔ 橫掃 ➔ 上撈<br>
-    • <span class="key-badge">K</span> 真・蓄力斬（長按蓄力釋放巨大威力）<br>
+    • <span class="key-badge">W</span><span class="key-badge">A</span><span class="key-badge">S</span><span class="key-badge">D</span> 移動獵人 ｜ <span class="key-badge">Space</span> 翻滾閃避（無敵幀）<br>
+    • <span class="key-badge">1</span> / <span class="key-badge">2</span> 切換武器（大劍／雙劍）<br>
+    • <span class="key-badge">J</span> 或 <span class="key-badge">左鍵</span> 輕砍三連段 ｜ <span class="key-badge">K</span> 長按蓄力重斬<br>
     • <span class="key-badge">E</span> 飲用回覆藥 ｜ <span class="key-badge">R</span> 砥石研磨回復斬味<br>
-    • <span class="key-badge">Tab</span> / <span class="key-badge">F</span> 鎖定魔物視角 ｜ 滑鼠右鍵拖曳旋轉
+    • <span class="key-badge">Tab</span> / <span class="key-badge">F</span> 鎖定視角 ｜ 右鍵拖曳視角 ｜ <span class="key-badge">P</span> 暫停
   </div>
 
   <div id="lockon-reticle"></div>
   <div id="impact-flash"></div>
+  <div id="damage-vignette"></div>
+  <div id="damage-direction" aria-hidden="true"></div>
   <div id="banner-notify"></div>
 
   <!-- 結算畫面 -->
@@ -571,6 +727,19 @@
   <div id="canvas-container"></div>
 
   <button id="pause-button" type="button" aria-pressed="false">暫停</button>
+
+  <div id="save-controls" aria-label="存檔操作">
+    <button id="save-button" type="button">💾 儲存</button>
+    <button id="load-button" type="button">↺ 讀取</button>
+    <button id="clear-save-button" type="button">清除</button>
+    <span id="save-status" role="status" aria-live="polite">尚無存檔</span>
+  </div>
+
+  <div id="weapon-controls" aria-label="武器選擇">
+    <span>武器</span>
+    <button type="button" data-weapon="greatsword" class="active">大劍 1</button>
+    <button type="button" data-weapon="dualblades">雙劍 2</button>
+  </div>
 
   <div id="touch-controls" aria-label="觸控操作">
     <div class="touch-dpad">
@@ -584,6 +753,8 @@
       <button class="touch-btn" type="button" data-action="dodge">翻滾</button>
       <button class="touch-btn" type="button" data-action="charge">蓄力</button>
       <button class="touch-btn" type="button" data-action="potion">回復</button>
+      <button class="touch-btn" type="button" data-action="sharpen">磨刀</button>
+      <button class="touch-btn" type="button" data-action="lock" aria-pressed="false">鎖定魔物</button>
     </div>
   </div>
 
@@ -599,13 +770,36 @@
       isWithinRange,
       nextComboStep
     } from './src/game-rules.mjs';
+    import {
+      createSaveState,
+      readSave,
+      readStats,
+      removeSave,
+      writeSave,
+      writeStats
+    } from './src/save-system.mjs';
 
     const runtimeError = document.getElementById('runtime-error');
     const impactFlash = document.getElementById('impact-flash');
+    const damageVignette = document.getElementById('damage-vignette');
+    const damageDirection = document.getElementById('damage-direction');
+    const assetLoading = document.getElementById('asset-loading');
     const showRuntimeError = (message) => {
       runtimeError.innerText = message;
       runtimeError.hidden = false;
     };
+    window.addEventListener('error', (event) => {
+      const message = event && event.error && event.error.message
+        ? event.error.message
+        : (event && event.message ? event.message : '未知執行錯誤');
+      showRuntimeError(`遊戲初始化失敗：${message}`);
+    });
+    window.addEventListener('unhandledrejection', (event) => {
+      const reason = event && event.reason && event.reason.message
+        ? event.reason.message
+        : String(event && event.reason ? event.reason : '未知非同步錯誤');
+      showRuntimeError(`遊戲載入失敗：${reason}`);
+    });
 
     if (!window.THREE) {
       showRuntimeError('無法載入 3D 引擎，請確認網路連線後重新整理頁面。');
@@ -614,6 +808,21 @@
 
     const THREE = window.THREE;
     const assetLoader = THREE.GLTFLoader ? new THREE.GLTFLoader() : null;
+    const assetVersion = 'blender-realism-forest-weapons-20261021-11';
+    let pendingAssetLoads = assetLoader ? 3 : 0;
+    const markAssetLoaded = (assetName) => {
+      pendingAssetLoads = Math.max(0, pendingAssetLoads - 1);
+      if (assetLoading) {
+        assetLoading.innerText = pendingAssetLoads > 0
+          ? `🌿 正在載入 Blender 資產…（${assetName} 完成）`
+          : '🌿 獵場準備完成';
+        if (pendingAssetLoads === 0) assetLoading.classList.add('hidden');
+      }
+    };
+    if (!assetLoader) {
+      showRuntimeError('GLTFLoader 未成功載入，角色與獵場將暫時使用程序模型。');
+      assetLoading?.classList.add('hidden');
+    }
     /* ==============================================================
        1. 程式化音效合成器 (Web Audio API Procedural Sound Synthesizer)
        擷取自開源 Web 動作遊戲優勢：免外掛資源、零延遲、高回饋
@@ -622,6 +831,8 @@
       constructor() {
         this.ctx = null;
         this.unavailable = false;
+        this.outputNode = null;
+        this.ambientStarted = false;
       }
       init() {
         if (!this.ctx && !this.unavailable) {
@@ -634,8 +845,26 @@
           }
           try {
             this.ctx = new AudioContext();
+            this.outputNode = this.ctx.createGain();
+            this.outputNode.gain.value = 0.72;
+            const compressor = this.ctx.createDynamicsCompressor();
+            compressor.threshold.value = -18;
+            compressor.knee.value = 18;
+            compressor.ratio.value = 5;
+            compressor.attack.value = 0.003;
+            compressor.release.value = 0.18;
+            this.outputNode.connect(compressor);
+            const forestReverb = this.ctx.createConvolver();
+            forestReverb.buffer = this.createImpulseResponse(0.42, 2.6);
+            const wetGain = this.ctx.createGain();
+            wetGain.gain.value = 0.16;
+            this.outputNode.connect(forestReverb);
+            forestReverb.connect(wetGain);
+            wetGain.connect(compressor);
+            compressor.connect(this.ctx.destination);
             const tip = document.getElementById('audio-tip');
             if (tip) tip.style.display = 'none';
+            this.startAmbient();
           } catch (error) {
             this.unavailable = true;
             const tip = document.getElementById('audio-tip');
@@ -656,6 +885,79 @@
             }
           });
         }
+        this.startAmbient();
+      }
+      output() {
+        return this.outputNode || this.ctx.destination;
+      }
+      createImpulseResponse(duration, decay) {
+        const length = Math.max(1, Math.floor(this.ctx.sampleRate * duration));
+        const impulse = this.ctx.createBuffer(2, length, this.ctx.sampleRate);
+        for (let channel = 0; channel < impulse.numberOfChannels; channel++) {
+          const data = impulse.getChannelData(channel);
+          for (let index = 0; index < length; index++) {
+            const envelope = Math.pow(1 - index / length, decay);
+            data[index] = (Math.random() * 2 - 1) * envelope * (channel === 0 ? 0.8 : 0.68);
+          }
+        }
+        return impulse;
+      }
+      noiseBuffer(duration) {
+        const length = Math.max(1, Math.floor(this.ctx.sampleRate * duration));
+        const buffer = this.ctx.createBuffer(1, length, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < length; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (length * 0.22));
+        }
+        return buffer;
+      }
+      startAmbient() {
+        if (!this.ctx || this.ambientStarted) return;
+        this.ambientStarted = true;
+        const now = this.ctx.currentTime;
+        const ambientGain = this.ctx.createGain();
+        ambientGain.gain.value = 0.026;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 420;
+        ambientGain.connect(filter);
+        filter.connect(this.output());
+
+        const drone = this.ctx.createOscillator();
+        drone.type = 'sine';
+        drone.frequency.value = 54;
+        const droneGain = this.ctx.createGain();
+        droneGain.gain.value = 0.72;
+        drone.connect(droneGain);
+        droneGain.connect(ambientGain);
+        drone.start(now);
+
+        const undertone = this.ctx.createOscillator();
+        undertone.type = 'triangle';
+        undertone.frequency.value = 81;
+        const undertoneGain = this.ctx.createGain();
+        undertoneGain.gain.value = 0.18;
+        undertone.connect(undertoneGain);
+        undertoneGain.connect(ambientGain);
+        undertone.start(now);
+
+        this.ambientNodes = [drone, undertone, ambientGain, filter];
+      }
+      playFootstep(heavy = false) {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const source = this.ctx.createBufferSource();
+        source.buffer = this.noiseBuffer(0.07);
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = heavy ? 180 : 240;
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(heavy ? 0.08 : 0.045, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+        source.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.output());
+        source.start(now);
       }
       playSlash(heavy = false) {
         if (!this.ctx) return;
@@ -670,20 +972,30 @@
         gain.gain.exponentialRampToValueAtTime(0.001, now + (heavy ? 0.28 : 0.16));
 
         osc.connect(gain);
-        gain.connect(this.ctx.destination);
+        gain.connect(this.output());
         osc.start(now);
         osc.stop(now + (heavy ? 0.3 : 0.18));
+
+        const air = this.ctx.createBufferSource();
+        air.buffer = this.noiseBuffer(heavy ? 0.22 : 0.12);
+        const airFilter = this.ctx.createBiquadFilter();
+        airFilter.type = 'bandpass';
+        airFilter.frequency.setValueAtTime(heavy ? 900 : 1400, now);
+        airFilter.frequency.exponentialRampToValueAtTime(260, now + (heavy ? 0.22 : 0.12));
+        airFilter.Q.value = 0.7;
+        const airGain = this.ctx.createGain();
+        airGain.gain.setValueAtTime(heavy ? 0.22 : 0.12, now);
+        airGain.gain.exponentialRampToValueAtTime(0.001, now + (heavy ? 0.22 : 0.12));
+        air.connect(airFilter);
+        airFilter.connect(airGain);
+        airGain.connect(this.output());
+        air.start(now);
       }
       playHit(heavy = false) {
         if (!this.ctx) return;
         const now = this.ctx.currentTime;
         // 打擊衝擊雜音
-        const bufferSize = this.ctx.sampleRate * (heavy ? 0.18 : 0.09);
-        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const output = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-          output[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.25));
-        }
+        const buffer = this.noiseBuffer(heavy ? 0.18 : 0.09);
         const whiteNoise = this.ctx.createBufferSource();
         whiteNoise.buffer = buffer;
 
@@ -697,7 +1009,7 @@
 
         whiteNoise.connect(filter);
         filter.connect(gain);
-        gain.connect(this.ctx.destination);
+        gain.connect(this.output());
         whiteNoise.start(now);
 
         // 低頻重音衝擊
@@ -709,9 +1021,21 @@
         subGain.gain.setValueAtTime(heavy ? 0.6 : 0.3, now);
         subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
         subOsc.connect(subGain);
-        subGain.connect(this.ctx.destination);
+        subGain.connect(this.output());
         subOsc.start(now);
         subOsc.stop(now + 0.16);
+
+        const metal = this.ctx.createOscillator();
+        const metalGain = this.ctx.createGain();
+        metal.type = 'triangle';
+        metal.frequency.setValueAtTime(heavy ? 820 : 1160, now);
+        metal.frequency.exponentialRampToValueAtTime(240, now + 0.09);
+        metalGain.gain.setValueAtTime(heavy ? 0.18 : 0.1, now);
+        metalGain.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
+        metal.connect(metalGain);
+        metalGain.connect(this.output());
+        metal.start(now);
+        metal.stop(now + 0.12);
       }
       playRoar() {
         if (!this.ctx) return;
@@ -735,9 +1059,121 @@
 
         osc.connect(filter);
         filter.connect(gain);
-        gain.connect(this.ctx.destination);
+        gain.connect(this.output());
         osc.start(now);
         osc.stop(now + 1.3);
+
+        const sub = this.ctx.createOscillator();
+        const subGain = this.ctx.createGain();
+        sub.type = 'triangle';
+        sub.frequency.setValueAtTime(54, now);
+        sub.frequency.exponentialRampToValueAtTime(28, now + 1.4);
+        subGain.gain.setValueAtTime(0.42, now);
+        subGain.gain.exponentialRampToValueAtTime(0.001, now + 1.4);
+        sub.connect(subGain);
+        subGain.connect(this.output());
+        sub.start(now);
+        sub.stop(now + 1.45);
+
+        const breath = this.ctx.createBufferSource();
+        breath.buffer = this.noiseBuffer(1.25);
+        const breathFilter = this.ctx.createBiquadFilter();
+        breathFilter.type = 'lowpass';
+        breathFilter.frequency.setValueAtTime(620, now);
+        breathFilter.frequency.linearRampToValueAtTime(180, now + 1.15);
+        const breathGain = this.ctx.createGain();
+        breathGain.gain.setValueAtTime(0.16, now);
+        breathGain.gain.exponentialRampToValueAtTime(0.001, now + 1.25);
+        breath.connect(breathFilter);
+        breathFilter.connect(breathGain);
+        breathGain.connect(this.output());
+        breath.start(now);
+      }
+      playWingWhoosh(enraged = false) {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const source = this.ctx.createBufferSource();
+        source.buffer = this.noiseBuffer(enraged ? 0.32 : 0.24);
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(enraged ? 420 : 300, now);
+        filter.frequency.exponentialRampToValueAtTime(enraged ? 1200 : 850, now + 0.14);
+        filter.Q.value = 0.55;
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.exponentialRampToValueAtTime(enraged ? 0.24 : 0.14, now + 0.06);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + (enraged ? 0.3 : 0.22));
+        source.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.output());
+        source.start(now);
+      }
+      playEnragePulse() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(96, now);
+        osc.frequency.exponentialRampToValueAtTime(260, now + 0.32);
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.exponentialRampToValueAtTime(0.24, now + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+        osc.connect(gain);
+        gain.connect(this.output());
+        osc.start(now);
+        osc.stop(now + 0.45);
+      }
+      playTelegraph(kind = 'charge', enraged = false) {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const isSpin = kind === 'spin';
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
+        osc.type = isSpin ? 'triangle' : 'sine';
+        osc.frequency.setValueAtTime(isSpin ? 180 : 92, now);
+        osc.frequency.exponentialRampToValueAtTime(isSpin ? 520 : 180, now + (isSpin ? 0.26 : 0.42));
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(enraged ? 980 : 720, now);
+        filter.frequency.linearRampToValueAtTime(enraged ? 1500 : 1100, now + 0.4);
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.exponentialRampToValueAtTime(enraged ? 0.2 : 0.13, now + 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + (isSpin ? 0.34 : 0.5));
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.output());
+        osc.start(now);
+        osc.stop(now + (isSpin ? 0.36 : 0.52));
+      }
+      playPartBreak() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const metal = this.ctx.createOscillator();
+        const metalGain = this.ctx.createGain();
+        metal.type = 'triangle';
+        metal.frequency.setValueAtTime(1180, now);
+        metal.frequency.exponentialRampToValueAtTime(180, now + 0.34);
+        metalGain.gain.setValueAtTime(0.22, now);
+        metalGain.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
+        metal.connect(metalGain);
+        metalGain.connect(this.output());
+        metal.start(now);
+        metal.stop(now + 0.38);
+
+        const crack = this.ctx.createBufferSource();
+        crack.buffer = this.noiseBuffer(0.18);
+        const crackFilter = this.ctx.createBiquadFilter();
+        crackFilter.type = 'highpass';
+        crackFilter.frequency.setValueAtTime(850, now);
+        crackFilter.frequency.exponentialRampToValueAtTime(260, now + 0.16);
+        const crackGain = this.ctx.createGain();
+        crackGain.gain.setValueAtTime(0.16, now);
+        crackGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+        crack.connect(crackFilter);
+        crackFilter.connect(crackGain);
+        crackGain.connect(this.output());
+        crack.start(now);
       }
       playRoll() {
         if (!this.ctx) return;
@@ -750,7 +1186,7 @@
         gain.gain.setValueAtTime(0.2, now);
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
         osc.connect(gain);
-        gain.connect(this.ctx.destination);
+        gain.connect(this.output());
         osc.start(now);
         osc.stop(now + 0.22);
       }
@@ -765,7 +1201,7 @@
         gain.gain.setValueAtTime(0.25, now);
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
         osc.connect(gain);
-        gain.connect(this.ctx.destination);
+        gain.connect(this.output());
         osc.start(now);
         osc.stop(now + 0.42);
       }
@@ -780,7 +1216,7 @@
         gain.gain.setValueAtTime(0.3, now);
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
         osc.connect(gain);
-        gain.connect(this.ctx.destination);
+        gain.connect(this.output());
         osc.start(now);
         osc.stop(now + 0.26);
       }
@@ -897,7 +1333,7 @@
     const container = document.getElementById('canvas-container');
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x18251f);
-    scene.fog = new THREE.FogExp2(0x18251f, 0.014);
+    scene.fog = new THREE.Fog(0x18251f, 24, 105);
 
     const camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 500);
     let renderer;
@@ -911,17 +1347,17 @@
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, window.innerWidth < 900 ? 1.25 : 1.75));
     renderer.outputEncoding = THREE.sRGBEncoding;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.08;
+    renderer.toneMappingExposure = 0.9;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(renderer.domElement);
 
-    const ambientLight = new THREE.AmbientLight(0xdfe6e9, 0.55);
+    const ambientLight = new THREE.AmbientLight(0xdfe6e9, 0.4);
     scene.add(ambientLight);
-    const hemisphereLight = new THREE.HemisphereLight(0x9cbfa8, 0x21170f, 0.72);
+    const hemisphereLight = new THREE.HemisphereLight(0x9cbfa8, 0x21170f, 0.58);
     scene.add(hemisphereLight);
 
-    const sunLight = new THREE.DirectionalLight(0xfffae6, 1.1);
+    const sunLight = new THREE.DirectionalLight(0xfffae6, 1.2);
     sunLight.position.set(45, 65, 35);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 2048;
@@ -936,7 +1372,7 @@
     sunLight.shadow.bias = -0.0005;
     scene.add(sunLight);
 
-    const rimLight = new THREE.DirectionalLight(0x7eabc5, 0.48);
+    const rimLight = new THREE.DirectionalLight(0x7eabc5, 0.34);
     rimLight.position.set(-40, 22, -55);
     scene.add(rimLight);
 
@@ -953,10 +1389,10 @@
     scene.add(ground);
 
     const clearingMat = new THREE.MeshStandardMaterial({
-      color: 0x41533b,
+      color: 0x34472f,
       roughness: 1.0,
       transparent: true,
-      opacity: 0.52,
+      opacity: 0.3,
       depthWrite: false
     });
     const clearing = new THREE.Mesh(new THREE.CircleGeometry(31, 64), clearingMat);
@@ -1007,6 +1443,8 @@
 
     // 邊界巨石柱環境裝飾
     const rockMat = new THREE.MeshStandardMaterial({ color: 0x4b5866, roughness: 0.9 });
+    const boundaryRocksGroup = new THREE.Group();
+    scene.add(boundaryRocksGroup);
     for (let i = 0; i < 22; i++) {
       const radius = 1.6 + Math.random() * 2.2;
       const height = 4 + Math.random() * 8;
@@ -1016,7 +1454,7 @@
       rock.position.set(Math.cos(angle) * dist, height / 2, Math.sin(angle) * dist);
       rock.castShadow = true;
       rock.receiveShadow = true;
-      scene.add(rock);
+      boundaryRocksGroup.add(rock);
     }
 
     const particleSystem = new ParticleManager(scene);
@@ -1059,6 +1497,36 @@
     swordGroup.add(hilt, guard, blade);
     swordGroup.rotation.x = Math.PI / 4.5;
     weaponPivot.add(swordGroup);
+
+    // 大劍與雙劍揮擊拖影：用刀尖的歷史位置形成短暫的光帶，增加速度與重量感。
+    const bladeTrailLength = 12;
+    const createBladeTrailState = () => {
+      const positions = new Float32Array(bladeTrailLength * 3);
+      const history = Array.from({ length: bladeTrailLength }, () => new THREE.Vector3());
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const material = new THREE.LineBasicMaterial({
+        color: 0xcaf7ff,
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+      const line = new THREE.Line(geometry, material);
+      line.frustumCulled = false;
+      scene.add(line);
+      return {
+        positions,
+        history,
+        geometry,
+        material,
+        line,
+        tip: new THREE.Vector3(),
+        active: false
+      };
+    };
+    const primaryBladeTrail = createBladeTrailState();
+    const secondaryBladeTrail = createBladeTrailState();
 
     hunterGroup.position.set(0, 0, 22);
 
@@ -1129,6 +1597,88 @@
     const proceduralMonsterWings = mWings;
     let hunterVisual = null;
     let monsterVisual = null;
+    let environmentVisual = null;
+    let hunterMixer = null;
+    let monsterMixer = null;
+    let alternateWeaponPivot = null;
+    let weaponMode = 'greatsword';
+    const weaponProfiles = {
+      greatsword: {
+        label: '大劍',
+        lightCost: 12,
+        chargeCost: 30,
+        lightDuration: 0.48,
+        heavyDuration: 0.65,
+        lightDamageMin: 32,
+        lightDamageMax: 44,
+        heavyDamageMin: 85,
+        heavyDamageMax: 110,
+        hitRange: 6.8
+      },
+      dualblades: {
+        label: '雙劍',
+        lightCost: 8,
+        chargeCost: 18,
+        lightDuration: 0.3,
+        heavyDuration: 0.52,
+        lightDamageMin: 18,
+        lightDamageMax: 26,
+        heavyDamageMin: 52,
+        heavyDamageMax: 68,
+        hitRange: 6.2
+      }
+    };
+    const hunterRig = {
+      chest: null,
+      head: null,
+      weapon: null,
+      blade: null,
+      dualBlades: [],
+      dualHands: [],
+      activeBlades: [blade],
+      legs: [],
+      shoulders: []
+    };
+    const monsterRig = {
+      body: null,
+      head: null,
+      wings: [],
+      tail: null,
+      eyes: []
+    };
+
+    const auraRings = [0, 1, 2].map((index) => {
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(3.0 + index * 0.85, 0.045 + index * 0.012, 8, 64),
+        new THREE.MeshBasicMaterial({
+          color: index === 1 ? 0xd66bff : 0x7c4dff,
+          transparent: true,
+          opacity: 0,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false
+        })
+      );
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = 0.75 + index * 1.7;
+      ring.rotation.z = index * 0.65;
+      monsterGroup.add(ring);
+      return ring;
+    });
+
+    const monsterWarningRing = new THREE.Mesh(
+      new THREE.RingGeometry(3.7, 4.05, 64),
+      new THREE.MeshBasicMaterial({
+        color: 0xff5b5b,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      })
+    );
+    monsterWarningRing.rotation.x = -Math.PI / 2;
+    monsterWarningRing.position.y = 0.08;
+    monsterGroup.add(monsterWarningRing);
 
     const hideMeshes = (object) => {
       object.traverse((child) => {
@@ -1137,12 +1687,48 @@
     };
 
     const prepareLoadedModel = (model, trackMaterials = false) => {
+      const createRuntimeMaterial = (source) => {
+        const material = (source && typeof source.clone === 'function' && source.isMeshStandardMaterial)
+          ? source.clone()
+          : new THREE.MeshStandardMaterial({
+              color: source && source.color ? source.color.clone() : 0xffffff,
+              roughness: source && Number.isFinite(source.roughness) ? source.roughness : 0.6,
+              metalness: source && Number.isFinite(source.metalness) ? source.metalness : 0,
+              map: source && source.map ? source.map : null,
+              normalMap: source && source.normalMap ? source.normalMap : null,
+              roughnessMap: source && source.roughnessMap ? source.roughnessMap : null,
+              metalnessMap: source && source.metalnessMap ? source.metalnessMap : null,
+              emissiveMap: source && source.emissiveMap ? source.emissiveMap : null,
+              emissive: source && source.emissive ? source.emissive.clone() : new THREE.Color(0x000000),
+              emissiveIntensity: source && Number.isFinite(source.emissiveIntensity) ? source.emissiveIntensity : 1,
+              transparent: Boolean(source && source.transparent),
+              opacity: source && Number.isFinite(source.opacity) ? source.opacity : 1,
+              alphaTest: source && Number.isFinite(source.alphaTest) ? source.alphaTest : 0,
+              side: source && source.side ? source.side : THREE.FrontSide
+            });
+        if (source && source.normalScale && material.normalScale) {
+          material.normalScale.copy(source.normalScale);
+        }
+        material.userData = {
+          ...material.userData,
+          baseEmissive: material.emissive ? material.emissive.clone() : new THREE.Color(0x000000),
+          baseEmissiveIntensity: Number.isFinite(material.emissiveIntensity) ? material.emissiveIntensity : 1
+        };
+        return material;
+      };
+
       model.traverse((child) => {
         if (!child.isMesh) return;
         child.castShadow = true;
         child.receiveShadow = true;
         if (child.material) {
-          if (trackMaterials && child.material.emissive) monsterMaterials.add(child.material);
+          child.material = Array.isArray(child.material)
+            ? child.material.map(createRuntimeMaterial)
+            : createRuntimeMaterial(child.material);
+          if (trackMaterials) {
+            const materials = Array.isArray(child.material) ? child.material : [child.material];
+            materials.forEach((material) => monsterMaterials.add(material));
+          }
         }
       });
       return model;
@@ -1151,10 +1737,16 @@
     const loadVisualAssets = () => {
       if (!assetLoader) return;
 
-      assetLoader.load('./assets/models/hunter.glb', (gltf) => {
+      assetLoader.load(`./assets/models/hunter.glb?v=${assetVersion}`, (gltf) => {
         const model = prepareLoadedModel(gltf.scene);
         model.name = 'hunterVisual';
         hunterVisual = model;
+        if (gltf.animations && gltf.animations.length > 0) {
+          hunterMixer = new THREE.AnimationMixer(model);
+          gltf.animations.forEach((clip) => {
+            hunterMixer.clipAction(clip).setLoop(THREE.LoopRepeat, Infinity).play();
+          });
+        }
         hunterGroup.add(model);
         hideMeshes(proceduralHunterBody);
         hideMeshes(proceduralHunterHead);
@@ -1163,14 +1755,34 @@
         hunterBody = model.getObjectByName('chest') || hunterBody;
         blade = model.getObjectByName('weapon_blade') || blade;
         weaponPivot = model.getObjectByName('weaponPivot') || weaponPivot;
+        hunterRig.chest = model.getObjectByName('chest');
+        hunterRig.head = model.getObjectByName('head');
+        hunterRig.weapon = weaponPivot;
+        hunterRig.blade = blade;
+        hunterRig.dualBlades = ['l', 'r'].map((side) => model.getObjectByName(`dual_blade_${side}`)).filter(Boolean);
+        hunterRig.dualHands = ['l', 'r'].map((side) => model.getObjectByName(`dual_hand_${side}`)).filter(Boolean);
+        alternateWeaponPivot = model.getObjectByName('dualWeaponPivot');
+        if (alternateWeaponPivot) alternateWeaponPivot.visible = false;
+        hunterRig.legs = ['l', 'r'].map((side) => model.getObjectByName(`leg_${side}`)).filter(Boolean);
+        hunterRig.shoulders = ['l', 'r'].map((side) => model.getObjectByName(`shoulder_${side}`)).filter(Boolean);
+        applyWeaponMode();
+        markAssetLoaded('獵人');
       }, undefined, (error) => {
+        showRuntimeError(`獵人 GLB 載入失敗：${error && error.message ? error.message : String(error)}`);
+        markAssetLoaded('獵人 fallback');
         console.warn('Hunter asset failed to load; using procedural fallback.', error);
       });
 
-      assetLoader.load('./assets/models/monster.glb', (gltf) => {
+      assetLoader.load(`./assets/models/monster.glb?v=${assetVersion}`, (gltf) => {
         const model = prepareLoadedModel(gltf.scene, true);
         model.name = 'monsterVisual';
         monsterVisual = model;
+        if (gltf.animations && gltf.animations.length > 0) {
+          monsterMixer = new THREE.AnimationMixer(model);
+          gltf.animations.forEach((clip) => {
+            monsterMixer.clipAction(clip).setLoop(THREE.LoopRepeat, Infinity).play();
+          });
+        }
         monsterGroup.add(model);
         hideMeshes(proceduralMonsterBody);
         hideMeshes(proceduralMonsterHead);
@@ -1180,15 +1792,248 @@
         tailGroup = model.getObjectByName('tail') || tailGroup;
         hornLeft = model.getObjectByName('horn_l') || hornLeft;
         hornRight = model.getObjectByName('horn_r') || hornRight;
+        monsterRig.body = model.getObjectByName('body');
+        monsterRig.head = headGroup;
+        monsterRig.wings = ['l', 'r'].map((side) => model.getObjectByName(`wing_${side}`)).filter(Boolean);
+        monsterRig.tail = tailGroup;
+        monsterRig.eyes = ['l', 'r'].map((side) => model.getObjectByName(`eye_${side}`)).filter(Boolean);
+        syncMonsterPartBreakVisuals();
+        markAssetLoaded('魔物');
       }, undefined, (error) => {
+        showRuntimeError(`魔物 GLB 載入失敗：${error && error.message ? error.message : String(error)}`);
+        markAssetLoaded('魔物 fallback');
         console.warn('Monster asset failed to load; using procedural fallback.', error);
       });
+
+      assetLoader.load(`./assets/models/hunting_ground.glb?v=${assetVersion}`, (gltf) => {
+        const model = prepareLoadedModel(gltf.scene);
+        model.name = 'huntingGroundVisual';
+        // Blender 獵場以原點為中心；遊戲的獵人與魔物戰鬥中線位於 z=5。
+        model.position.z = 5;
+        environmentVisual = model;
+        scene.add(model);
+        ground.position.y = -0.02;
+        clearing.visible = false;
+        boneSite.visible = false;
+        foliageGroup.visible = false;
+        boundaryRocksGroup.visible = false;
+        markAssetLoaded('獵場');
+      }, undefined, (error) => {
+        showRuntimeError(`獵場 GLB 載入失敗：${error && error.message ? error.message : String(error)}`);
+        markAssetLoaded('獵場 fallback');
+        console.warn('Hunting ground asset failed to load; using procedural fallback.', error);
+      });
     };
+
+    function setWeaponEmissive(hexColor) {
+      const blades = hunterRig.activeBlades.length > 0 ? hunterRig.activeBlades : [blade];
+      blades.forEach((mesh) => {
+        if (mesh && mesh.material && mesh.material.emissive) {
+          mesh.material.emissive.setHex(hexColor);
+        }
+      });
+    }
+
+    function applyWeaponMode() {
+      const usingDualBlades = weaponMode === 'dualblades' && alternateWeaponPivot;
+      if (hunterRig.weapon) hunterRig.weapon.visible = !usingDualBlades;
+      if (alternateWeaponPivot) alternateWeaponPivot.visible = Boolean(usingDualBlades);
+      weaponPivot = usingDualBlades
+        ? alternateWeaponPivot
+        : (hunterRig.weapon || proceduralHunterWeaponPivot);
+      blade = usingDualBlades
+        ? (hunterRig.dualBlades[0] || blade)
+        : (hunterRig.blade || blade);
+      hunterRig.activeBlades = usingDualBlades && hunterRig.dualBlades.length > 0
+        ? hunterRig.dualBlades
+        : [hunterRig.blade || blade].filter(Boolean);
+      setWeaponEmissive(0x000000);
+      document.querySelectorAll('[data-weapon]').forEach((button) => {
+        const active = button.dataset.weapon === weaponMode;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', String(active));
+      });
+    }
+
+    function setWeaponMode(mode) {
+      if (!weaponProfiles[mode] || gameOver || isPaused || weaponMode === mode) return;
+      if (player.isCharging) {
+        player.isCharging = false;
+        player.chargeTime = 0;
+        player.chargeLevel = 1;
+      }
+      weaponMode = mode;
+      applyWeaponMode();
+      showBanner(`⚔️ 已切換${weaponProfiles[mode].label}`);
+    }
 
     loadVisualAssets();
 
     const setMonsterEmissive = (color) => {
-      monsterMaterials.forEach((material) => material.emissive.setHex(color));
+      monsterMaterials.forEach((material) => {
+        if (!material || !material.emissive) return;
+        const baseEmissive = material.userData?.baseEmissive;
+        const baseIntensity = material.userData?.baseEmissiveIntensity ?? 1;
+        const hasInherentGlow = baseEmissive && (baseEmissive.r + baseEmissive.g + baseEmissive.b > 0.05);
+        if (color === 0x000000) {
+          if (baseEmissive) material.emissive.copy(baseEmissive);
+          else material.emissive.setHex(0x000000);
+          material.emissiveIntensity = baseIntensity;
+        } else if (color === 0x3a002d && hasInherentGlow) {
+          material.emissive.copy(baseEmissive);
+          material.emissiveIntensity = baseIntensity * 1.4;
+        } else {
+          material.emissive.setHex(color);
+          material.emissiveIntensity = 1;
+        }
+      });
+    };
+
+    let hunterStepPhase = 0;
+
+    const animateHunterVisual = (dt, moving) => {
+      if (!hunterVisual) return;
+      const time = clock.elapsedTime;
+      const speed = moving ? 10.5 : 2.4;
+      const stride = moving ? Math.sin(time * speed) : 0;
+      const breathe = Math.sin(time * 2.4) * 0.012;
+      if (moving) {
+        const previousStep = Math.floor(hunterStepPhase / Math.PI);
+        hunterStepPhase += dt * speed;
+        if (Math.floor(hunterStepPhase / Math.PI) !== previousStep) audio.playFootstep();
+      } else {
+        hunterStepPhase = 0;
+      }
+      hunterVisual.position.y = moving ? Math.abs(stride) * 0.035 : breathe;
+      hunterVisual.rotation.z = player.state === 'charging' ? -0.055 : (moving ? -moveInputForVisual.x * 0.045 : 0);
+
+      if (hunterRig.chest) {
+        hunterRig.chest.scale.y = 1 + breathe * 0.8;
+      }
+      hunterRig.legs.forEach((leg, index) => {
+        leg.rotation.x = moving ? stride * (index === 0 ? 0.22 : -0.22) : 0;
+        leg.rotation.z = moving ? stride * (index === 0 ? 0.035 : -0.035) : 0;
+      });
+      hunterRig.shoulders.forEach((shoulder, index) => {
+        shoulder.rotation.z = moving ? stride * (index === 0 ? 0.06 : -0.06) : 0;
+      });
+    };
+
+    let moveInputForVisual = { x: 0, z: 0 };
+
+    const updateSingleTrail = (trail, targetBlade, isSwinging, targetOpacity, colorHex, tipY, dt) => {
+      trail.material.opacity = THREE.MathUtils.lerp(trail.material.opacity, targetOpacity, 12 * dt);
+      if (!isSwinging || !targetBlade || !targetBlade.parent) {
+        trail.active = false;
+        return;
+      }
+      targetBlade.localToWorld(trail.tip.set(0, tipY, 0));
+      if (!trail.active) {
+        trail.history.forEach((point) => point.copy(trail.tip));
+        trail.active = true;
+      } else {
+        for (let i = trail.history.length - 1; i > 0; i--) {
+          trail.history[i].lerp(trail.history[i - 1], Math.min(1, dt * 24));
+        }
+        trail.history[0].copy(trail.tip);
+      }
+      trail.history.forEach((point, index) => {
+        const offset = index * 3;
+        trail.positions[offset] = point.x;
+        trail.positions[offset + 1] = point.y;
+        trail.positions[offset + 2] = point.z;
+      });
+      trail.geometry.attributes.position.needsUpdate = true;
+      trail.material.color.setHex(colorHex);
+    };
+
+    const updateBladeTrail = (dt) => {
+      const isSwinging = player.state === 'attack_light' || player.state === 'attack_heavy';
+      const targetOpacity = isSwinging ? (player.state === 'attack_heavy' ? 0.78 : 0.5) : 0;
+      const colorHex = player.state === 'attack_heavy' ? 0xffcf72 : 0xcaf7ff;
+      const usingDual = weaponMode === 'dualblades' && hunterRig.dualBlades.length >= 2;
+      const tipY = usingDual ? 1.95 : 2.1;
+
+      updateSingleTrail(primaryBladeTrail, blade, isSwinging, targetOpacity, colorHex, tipY, dt);
+      updateSingleTrail(
+        secondaryBladeTrail,
+        usingDual ? hunterRig.dualBlades[1] : null,
+        isSwinging && usingDual,
+        usingDual ? targetOpacity : 0,
+        colorHex,
+        tipY,
+        dt
+      );
+    };
+
+    const animateMonsterVisual = (dt) => {
+      if (!monsterVisual) return;
+      const time = clock.elapsedTime;
+      const enraged = monster.isEnraged;
+      const pulse = 1 + Math.sin(time * (enraged ? 11 : 2.2)) * (enraged ? 0.035 : 0.012);
+      const breathing = Math.sin(time * 2.1) * 0.04;
+      const isMoving = monster.state === 'chase' || monster.state === 'charge';
+      const gait = isMoving ? Math.sin(time * (enraged ? 9.5 : 7.0)) : 0;
+      const hitReaction = monster.hitFlashTimer > 0
+        ? Math.sin(time * 46) * Math.min(1, monster.hitFlashTimer * 8)
+        : 0;
+
+      if (monsterRig.body) {
+        monsterRig.body.scale.set(1 + Math.abs(hitReaction) * 0.025, pulse + Math.abs(hitReaction) * 0.045, 1);
+        monsterRig.body.position.y = breathing - Math.abs(hitReaction) * 0.06;
+        monsterRig.body.rotation.z = hitReaction * 0.035;
+      }
+      if (monsterRig.head) {
+        monsterRig.head.rotation.x = monster.state === 'roar'
+          ? -0.22 - Math.sin(time * 14) * 0.04
+          : Math.sin(time * 2.2) * 0.018 - hitReaction * 0.035;
+      }
+      monsterRig.wings.forEach((wing, index) => {
+        const phase = index === 0 ? 0 : Math.PI;
+        const flap = isMoving ? Math.sin(time * (enraged ? 8.5 : 6.2) + phase) : Math.sin(time * 2.1 + phase) * 0.3;
+        wing.rotation.z = flap * (enraged ? 0.16 : 0.08);
+        wing.rotation.x = monster.state === 'roar' ? -0.18 : 0;
+      });
+      if (monsterRig.tail) {
+        monsterRig.tail.rotation.y = monster.state === 'spin'
+          ? 0
+          : Math.sin(time * (enraged ? 5.2 : 3.0)) * 0.08;
+        monsterRig.tail.rotation.x = gait * 0.035;
+      }
+      monsterRig.eyes.forEach((eye) => {
+        eye.scale.setScalar(enraged ? 1.16 + Math.sin(time * 12) * 0.06 : 1);
+      });
+    };
+
+    const updateEnrageAura = (dt) => {
+      const targetOpacity = monster.isEnraged ? 0.42 : 0;
+      auraRings.forEach((ring, index) => {
+        ring.material.opacity = THREE.MathUtils.lerp(ring.material.opacity, targetOpacity * (1 - index * 0.18), 5 * dt);
+        ring.rotation.y += dt * (index % 2 === 0 ? 0.9 : -1.2);
+        ring.rotation.z += dt * (index % 2 === 0 ? -0.7 : 0.6);
+        ring.scale.setScalar(1 + Math.sin(clock.elapsedTime * 5 + index) * 0.035);
+      });
+    };
+
+    const updateMonsterTelegraph = (dt) => {
+      const isCharge = monster.state === 'telegraph_charge';
+      const isSpin = monster.state === 'telegraph_spin';
+      const isRoar = monster.state === 'roar';
+      const isTelegraphing = isCharge || isSpin || isRoar;
+      const targetOpacity = isTelegraphing ? (monster.isEnraged ? 0.62 : 0.44) : 0;
+      monsterWarningRing.material.opacity = THREE.MathUtils.lerp(
+        monsterWarningRing.material.opacity,
+        targetOpacity,
+        10 * dt
+      );
+
+      if (!isTelegraphing) return;
+
+      const color = isCharge ? 0xff4d4d : (isSpin ? 0xffa726 : 0xb26cff);
+      monsterWarningRing.material.color.setHex(color);
+      const pulse = 0.92 + Math.sin(clock.elapsedTime * (isRoar ? 12 : 18)) * 0.1;
+      const stateScale = isCharge ? 1.0 : (isSpin ? 1.12 : 0.82);
+      monsterWarningRing.scale.setScalar(stateScale * pulse * (monster.isEnraged ? 1.08 : 1));
     };
 
     /* ==============================================================
@@ -1231,6 +2076,7 @@
       chargeDir: new THREE.Vector3(),
       hasDealtDamage: false,
       staggerBuildUp: 0,
+      hitFlashTimer: 0,
       // 部位破壞狀態
       headHp: 200,
       isHeadBroken: false,
@@ -1240,12 +2086,28 @@
       hasRoared60: false
     };
 
+    const saveStorage = (() => {
+      try {
+        return window.localStorage;
+      } catch {
+        return null;
+      }
+    })();
+    const restoredSave = readSave(saveStorage);
+    const persistedStats = readStats(saveStorage);
+    const gameStats = {
+      hunts: persistedStats.hunts,
+      victories: persistedStats.victories,
+      defeats: persistedStats.defeats
+    };
+
     const ui = {
       hpBar: document.getElementById('hp-bar'),
       hpText: document.getElementById('hp-text'),
       staminaBar: document.getElementById('stamina-bar'),
       staminaText: document.getElementById('stamina-text'),
       potionCount: document.getElementById('potion-count'),
+      statsSummary: document.getElementById('stats-summary'),
       sharpnessFill: document.getElementById('sharpness-fill'),
       sharpnessText: document.getElementById('sharpness-text'),
       bossHpBar: document.getElementById('boss-hp-bar'),
@@ -1255,8 +2117,181 @@
       partHead: document.getElementById('part-head'),
       partTail: document.getElementById('part-tail'),
       pauseButton: document.getElementById('pause-button'),
-      restartButton: document.getElementById('restart-button')
+      restartButton: document.getElementById('restart-button'),
+      lockButton: document.querySelector('[data-action="lock"]'),
+      saveButton: document.getElementById('save-button'),
+      loadButton: document.getElementById('load-button'),
+      clearSaveButton: document.getElementById('clear-save-button'),
+      saveStatus: document.getElementById('save-status')
     };
+
+    function setSaveStatus(message) {
+      if (ui.saveStatus) ui.saveStatus.innerText = message;
+    }
+
+    function syncMonsterPartBreakVisuals() {
+      if (hornLeft) hornLeft.visible = !monster.isHeadBroken;
+      if (hornRight) hornRight.visible = !monster.isHeadBroken;
+      if (tailGroup) {
+        const tailScale = monster.isTailBroken ? 0.2 : 1;
+        tailGroup.scale.set(tailScale, tailScale, tailScale);
+      }
+      if (ui?.partHead) {
+        ui.partHead.className = monster.isHeadBroken ? 'part-broken' : '';
+        ui.partHead.innerText = monster.isHeadBroken ? '頭部角: 已折斷 💥' : '頭部角: 正常';
+      }
+      if (ui?.partTail) {
+        ui.partTail.className = monster.isTailBroken ? 'part-broken' : '';
+        ui.partTail.innerText = monster.isTailBroken ? '尾巴: 已斷裂 🗡️' : '尾巴: 完好';
+      }
+    }
+
+    function applySaveState(save) {
+      if (!save || save.player.hp <= 0 || save.monster.hp <= 0) return false;
+      player.hp = save.player.hp;
+      player.stamina = save.player.stamina;
+      player.sharpness = save.player.sharpness;
+      player.potions = save.player.potions;
+      monster.hp = save.monster.hp;
+      monster.headHp = save.monster.headHp;
+      monster.tailHp = save.monster.tailHp;
+      monster.isHeadBroken = save.monster.isHeadBroken;
+      monster.isTailBroken = save.monster.isTailBroken;
+      monster.hasRoared60 = Boolean(save.monster.hasRoared60);
+      monster.hasRoared25 = Boolean(save.monster.hasRoared25);
+      monster.state = 'chase';
+      monster.timer = 1.5;
+      monster.isEnraged = false;
+      monster.enrageTimer = 0;
+      monster.hasDealtDamage = false;
+      monster.staggerBuildUp = 0;
+      monster.hitFlashTimer = 0;
+      eyeLightL.intensity = 0;
+      eyeLightR.intensity = 0;
+      if (ui.enrageBadge) ui.enrageBadge.style.display = 'none';
+      monsterGroup.rotation.set(0, 0, 0);
+      setMonsterEmissive(0x000000);
+      syncMonsterPartBreakVisuals();
+      hunterGroup.position.set(save.player.position.x, save.player.position.y, save.player.position.z);
+      monsterGroup.position.set(save.monster.position.x, save.monster.position.y, save.monster.position.z);
+      cameraYaw = save.camera.yaw;
+      cameraPitch = save.camera.pitch;
+      player.state = 'idle';
+      player.timer = 0;
+      player.invincible = 0;
+      player.isCharging = false;
+      player.chargeTime = 0;
+      player.chargeLevel = 1;
+      player.comboStep = 0;
+      player.comboTimer = 0;
+      weaponMode = save.equipment?.weaponMode === 'dualblades' ? 'dualblades' : 'greatsword';
+      applyWeaponMode();
+      gameOver = false;
+      isPaused = false;
+      ui.pauseButton.innerText = '暫停';
+      ui.pauseButton.setAttribute('aria-pressed', 'false');
+      ui.pauseButton.style.display = 'block';
+      document.getElementById('message-overlay').style.display = 'none';
+      lastHudSnapshot = '';
+      updateHUD();
+      return true;
+    }
+
+    function resetHuntForNewGame() {
+      resetInputState();
+      player.hp = player.maxHp;
+      player.stamina = player.maxStamina;
+      player.sharpness = 90;
+      player.potions = 3;
+      player.state = 'idle';
+      player.timer = 0;
+      player.invincible = 0;
+      player.isCharging = false;
+      player.chargeTime = 0;
+      player.chargeLevel = 1;
+      player.comboStep = 0;
+      player.comboTimer = 0;
+      player.hasHitThisSwing = false;
+
+      monster.hp = monster.maxHp;
+      monster.headHp = 200;
+      monster.tailHp = 180;
+      monster.isHeadBroken = false;
+      monster.isTailBroken = false;
+      monster.hasRoared60 = false;
+      monster.hasRoared25 = false;
+      monster.state = 'chase';
+      monster.timer = 1.5;
+      monster.isEnraged = false;
+      monster.enrageTimer = 0;
+      monster.hasDealtDamage = false;
+      monster.staggerBuildUp = 0;
+      monster.hitFlashTimer = 0;
+
+      eyeLightL.intensity = 0;
+      eyeLightR.intensity = 0;
+      if (ui.enrageBadge) ui.enrageBadge.style.display = 'none';
+      monsterGroup.position.set(0, 0, -12);
+      monsterGroup.rotation.set(0, 0, 0);
+      hunterGroup.position.set(0, 0, 22);
+      hunterGroup.rotation.set(0, 0, 0);
+      setMonsterEmissive(0x000000);
+      setWeaponEmissive(0x000000);
+      syncMonsterPartBreakVisuals();
+
+      gameOver = false;
+      isPaused = false;
+      ui.pauseButton.innerText = '暫停';
+      ui.pauseButton.setAttribute('aria-pressed', 'false');
+      ui.pauseButton.style.display = 'block';
+      document.getElementById('message-overlay').style.display = 'none';
+      lastHudSnapshot = '';
+      updateHUD();
+      showBanner('⚔️ 新一輪狩獵開始！');
+    }
+
+    function buildSaveState() {
+      return createSaveState({
+        player,
+        monster,
+        hunterPosition: hunterGroup.position,
+        monsterPosition: monsterGroup.position,
+        camera: { yaw: cameraYaw, pitch: cameraPitch },
+        stats: gameStats,
+        weaponMode
+      });
+    }
+
+    function saveProgress() {
+      if (gameOver || player.hp <= 0 || monster.hp <= 0) {
+        setSaveStatus('狩獵已結束，無法儲存');
+        return;
+      }
+      const saved = writeSave(saveStorage, buildSaveState());
+      setSaveStatus(saved
+        ? `已儲存 ${new Date().toLocaleTimeString('zh-TW')}｜獵人 ${Math.ceil(player.hp)}／魔物 ${Math.ceil(monster.hp)}`
+        : '瀏覽器拒絕存檔');
+      if (saved) showBanner('💾 狩獵進度已儲存');
+    }
+
+    function loadProgress() {
+      const save = readSave(saveStorage);
+      if (applySaveState(save)) {
+        setSaveStatus(`已讀取｜獵人 ${Math.ceil(player.hp)}／魔物 ${Math.ceil(monster.hp)}`);
+        showBanner('↺ 已讀取狩獵進度');
+      } else {
+        setSaveStatus('沒有可讀取的有效存檔');
+      }
+    }
+
+    function clearProgress() {
+      const removed = removeSave(saveStorage);
+      setSaveStatus(removed ? '存檔已清除' : '無法清除存檔');
+    }
+
+    ui.saveButton?.addEventListener('click', saveProgress);
+    ui.loadButton?.addEventListener('click', loadProgress);
+    ui.clearSaveButton?.addEventListener('click', clearProgress);
 
     const upAxis = new THREE.Vector3(0, 1, 0);
     const forwardAxis = new THREE.Vector3(0, 0, 1);
@@ -1280,10 +2315,12 @@
     const keys = Object.create(null);
     const repeatableActions = new Set([' ', 'j', 'k', 'e', 'r', 'tab', 'f', 'p']);
     let isRightMouseDown = false;
-    let mouseDeltaX = 0;
-    let mouseDeltaY = 0;
     let cameraYaw = 0;
     let cameraPitch = 0.35;
+
+    if (restoredSave && applySaveState(restoredSave)) {
+      setSaveStatus('已自動讀取上次狩獵進度');
+    }
 
     window.addEventListener('keydown', (e) => {
       const k = e.key.toLowerCase();
@@ -1296,6 +2333,8 @@
       if (k === 'e') usePotion();
       if (k === 'p') togglePause();
       if (k === 'r') useSharpen();
+      if (k === '1') setWeaponMode('greatsword');
+      if (k === '2') setWeaponMode('dualblades');
       if (k === 'tab' || k === 'f') {
         e.preventDefault();
         toggleLockOn();
@@ -1350,7 +2389,10 @@
     }
 
     ui.pauseButton.addEventListener('click', togglePause);
-    ui.restartButton.addEventListener('click', () => window.location.reload());
+    ui.restartButton.addEventListener('click', resetHuntForNewGame);
+    document.querySelectorAll('[data-weapon]').forEach((button) => {
+      button.addEventListener('click', () => setWeaponMode(button.dataset.weapon));
+    });
 
     document.querySelectorAll('[data-hold-key]').forEach((button) => {
       const key = button.dataset.holdKey;
@@ -1380,6 +2422,10 @@
           triggerDodge();
         } else if (action === 'potion') {
           usePotion();
+        } else if (action === 'sharpen') {
+          useSharpen();
+        } else if (action === 'lock') {
+          toggleLockOn();
         }
         button.setPointerCapture?.(event.pointerId);
       });
@@ -1405,6 +2451,11 @@
       if (gameOver || isPaused) return;
       isLockOn = !isLockOn;
       const reticle = document.getElementById('lockon-reticle');
+      if (ui.lockButton) {
+        ui.lockButton.classList.toggle('active', isLockOn);
+        ui.lockButton.innerText = isLockOn ? '解除鎖定' : '鎖定魔物';
+        ui.lockButton.setAttribute('aria-pressed', String(isLockOn));
+      }
       if (isLockOn) {
         reticle.style.display = 'block';
         showBanner("🎯 已鎖定魔物視角");
@@ -1436,18 +2487,20 @@
     }
 
     function handleLightAttack() {
-      if (gameOver || isPaused || player.state !== 'idle' || player.stamina < 12) return;
-      player.stamina -= 12;
+      const profile = weaponProfiles[weaponMode];
+      if (gameOver || isPaused || player.state !== 'idle' || player.stamina < profile.lightCost) return;
+      player.stamina -= profile.lightCost;
       player.comboStep = nextComboStep(player.comboStep, player.comboTimer > 0);
       player.comboTimer = 0.9;
       player.state = 'attack_light';
-      player.timer = 0.48;
+      player.timer = profile.lightDuration;
       player.hasHitThisSwing = false;
       audio.playSlash(false);
     }
 
     function startCharge() {
-      if (gameOver || isPaused || player.state !== 'idle' || player.stamina < 30) return;
+      const profile = weaponProfiles[weaponMode];
+      if (gameOver || isPaused || player.state !== 'idle' || player.stamina < profile.chargeCost) return;
       player.isCharging = true;
       player.chargeTime = 0;
       player.chargeLevel = getChargeLevel(0);
@@ -1456,10 +2509,11 @@
 
     function releaseCharge() {
       if (gameOver || isPaused || !player.isCharging) return;
+      const profile = weaponProfiles[weaponMode];
       player.isCharging = false;
-      player.stamina -= 30;
+      player.stamina -= profile.chargeCost;
       player.state = 'attack_heavy';
-      player.timer = 0.65;
+      player.timer = profile.heavyDuration;
       player.hasHitThisSwing = false;
       audio.playSlash(true);
     }
@@ -1503,6 +2557,35 @@
       impactFlash.classList.remove('active');
       void impactFlash.offsetWidth;
       impactFlash.classList.add('active');
+    }
+
+    function triggerDamageFeedback(sourcePosition) {
+      damageVignette.classList.remove('active');
+      void damageVignette.offsetWidth;
+      damageVignette.classList.add('active');
+
+      const sourceScreen = sourcePosition.clone();
+      sourceScreen.y += 2.2;
+      sourceScreen.project(camera);
+      let x = (sourceScreen.x * 0.5 + 0.5) * window.innerWidth;
+      let y = (-(sourceScreen.y * 0.5) + 0.5) * window.innerHeight;
+      if (!Number.isFinite(x) || !Number.isFinite(y)) {
+        x = window.innerWidth / 2;
+        y = window.innerHeight / 2;
+      }
+
+      const centerX = window.innerWidth / 2;
+      const centerY = window.innerHeight / 2;
+      const angle = Math.atan2(y - centerY, x - centerX) + Math.PI / 2;
+      const margin = 46;
+      x = Math.max(margin, Math.min(window.innerWidth - margin, x));
+      y = Math.max(margin, Math.min(window.innerHeight - margin, y));
+      damageDirection.style.left = `${x}px`;
+      damageDirection.style.top = `${y}px`;
+      damageDirection.style.setProperty('--damage-angle', `${angle}rad`);
+      damageDirection.classList.remove('active');
+      void damageDirection.offsetWidth;
+      damageDirection.classList.add('active');
     }
 
     function spawnFloatingText(worldPos, text, color = "#ffeb3b") {
@@ -1554,19 +2637,19 @@
         moveVec.copy(moveInput).applyAxisAngle(upAxis, cameraYaw);
       }
 
-      if (hunterVisual) {
-        const moving = moveVec.lengthSq() > 0;
-        const bob = Math.sin(clock.elapsedTime * (moving ? 11 : 2.6)) * (moving ? 0.045 : 0.018);
-        hunterVisual.position.y = bob;
-        hunterVisual.rotation.z = player.state === 'charging' ? -0.035 : 0;
-      }
+      moveInputForVisual.x = moveVec.x;
+      moveInputForVisual.z = moveVec.z;
+      animateHunterVisual(dt, moveVec.lengthSq() > 0);
 
       // 狀態分流
       if (player.state === 'idle') {
         player.stamina = Math.min(player.maxStamina, player.stamina + 24 * dt);
         weaponPivot.rotation.set(0, 0, 0);
+        hunterRig.dualHands.forEach((hand, idx) => {
+          hand.rotation.set(0.175, 0, idx === 0 ? 0.14 : -0.14);
+        });
         hunterGroup.rotation.x = 0;
-        blade.material.emissive.setHex(0x000000);
+        setWeaponEmissive(0x000000);
 
         if (moveVec.lengthSq() > 0) {
           hunterGroup.position.addScaledVector(moveVec, player.speed * dt);
@@ -1577,7 +2660,7 @@
         player.chargeTime = Math.min(1.65, player.chargeTime + dt);
         player.chargeLevel = getChargeLevel(player.chargeTime);
         const chargeColor = player.chargeLevel >= 3 ? 0xff4757 : (player.chargeLevel === 2 ? 0xf39c12 : 0xe67e22);
-        blade.material.emissive.setHex(chargeColor);
+        setWeaponEmissive(chargeColor);
         weaponPivot.rotation.x = -Math.PI * 0.7;
 
         // 面對魔物緩慢轉向
@@ -1610,13 +2693,20 @@
       }
       else if (player.state === 'attack_light' || player.state === 'attack_heavy') {
         const isHeavy = player.state === 'attack_heavy';
-        const duration = isHeavy ? 0.65 : 0.48;
+        const profile = weaponProfiles[weaponMode];
+        const duration = isHeavy ? profile.heavyDuration : profile.lightDuration;
         player.timer -= dt;
         const progress = 1 - (player.timer / duration);
 
         const comboAngle = !isHeavy ? [0, 0.12, -0.12][player.comboStep] : 0;
         weaponPivot.rotation.x = -Math.PI * 0.7 + Math.PI * 1.55 * Math.min(1, progress * 1.4);
         weaponPivot.rotation.z = comboAngle;
+        if (weaponMode === 'dualblades') {
+          hunterRig.dualHands.forEach((hand, idx) => {
+            const sideDir = idx === 0 ? -1 : 1;
+            hand.rotation.z = sideDir * (0.28 * Math.sin(progress * Math.PI * 2));
+          });
+        }
 
         if (!player.hasHitThisSwing && progress > 0.3 && progress < 0.7) {
           checkHunterAttackHit(isHeavy, player.chargeLevel, !isHeavy ? [1, 1.08, 1.2][player.comboStep] : 1);
@@ -1627,7 +2717,7 @@
           weaponPivot.rotation.x = 0;
           weaponPivot.rotation.z = 0;
           player.chargeLevel = 1;
-          blade.material.emissive.setHex(0x000000);
+          setWeaponEmissive(0x000000);
         }
       }
 
@@ -1640,19 +2730,22 @@
        10. 獵人判定命中魔物 (弱點與部位破壞、斬味消耗)
        ============================================================== */
     function checkHunterAttackHit(isHeavy, chargeLevel = 1, comboMultiplier = 1) {
+      const profile = weaponProfiles[weaponMode];
       const forward = tempVectors.forward.copy(forwardAxis).applyAxisAngle(upAxis, hunterGroup.rotation.y);
       const hitCenter = tempVectors.hitCenter.copy(hunterGroup.position).addScaledVector(forward, 3.4);
 
       // 計算與魔物各部位距離
       const distToMonster = hitCenter.distanceTo(monsterGroup.position);
-      if (isWithinRange(distToMonster, 6.8)) {
+      if (isWithinRange(distToMonster, profile.hitRange)) {
         player.hasHitThisSwing = true;
 
         // 斬味倍率
         const sharpness = getCurrentSharpness();
         player.sharpness = Math.max(0, player.sharpness - (isHeavy ? 2.5 : 1.2));
 
-        const baseDamage = isHeavy ? (85 + Math.random() * 25) : (32 + Math.random() * 12);
+        const baseDamage = isHeavy
+          ? profile.heavyDamageMin + Math.random() * (profile.heavyDamageMax - profile.heavyDamageMin)
+          : profile.lightDamageMin + Math.random() * (profile.lightDamageMax - profile.lightDamageMin);
         const chargeMultiplier = isHeavy ? [1, 1.15, 1.35, 1.6][Math.max(1, Math.min(3, chargeLevel))] : 1;
 
         // 弱點判定：判定是打中頭部還是身軀/尾巴
@@ -1683,25 +2776,25 @@
           monster.headHp -= finalDamage;
           if (monster.headHp <= 0 && !monster.isHeadBroken) {
             monster.isHeadBroken = true;
-            hornLeft.visible = false;
-            hornRight.visible = false;
+            syncMonsterPartBreakVisuals();
+            particleSystem.spawnHitSparks(headWorldPos, 32, true);
+            audio.playPartBreak();
             showBanner("💥【部位破壞】轟龍頭角折斷！");
-            ui.partHead.className = 'part-broken';
-            ui.partHead.innerText = '頭部角: 已折斷 💥';
           }
         } else if (distToTail < 3.2 && !monster.isTailBroken) {
           monster.tailHp -= finalDamage;
           if (monster.tailHp <= 0) {
             monster.isTailBroken = true;
-            tailGroup.scale.set(0.2, 0.2, 0.2); // 斷尾縮小表現
+            syncMonsterPartBreakVisuals();
+            particleSystem.spawnHitSparks(tailWorldPos, 28, true);
+            audio.playPartBreak();
             showBanner("🗡️【斷尾成功】轟龍尾巴已切斷！");
-            ui.partTail.className = 'part-broken';
-            ui.partTail.innerText = '尾巴: 已斷裂 🗡️';
           }
         }
 
         monster.hp = Math.max(0, monster.hp - finalDamage);
         monster.staggerBuildUp += finalDamage;
+        monster.hitFlashTimer = isHeavy ? 0.18 : 0.11;
 
         // 核心打擊反饋：Hitstop (卡肉感) + ScreenShake (震屏) + 火花粒子
         triggerHitstop(isHeavy ? 0.09 : 0.05);
@@ -1731,11 +2824,14 @@
        11. 魔物 AI 與行為狀態機 (Monster AI, Roar, Enrage)
        ============================================================== */
     function updateMonster(dt) {
-      if (monster.hp <= 0) return;
-
-      if (monsterVisual) {
-        monsterVisual.position.y = Math.sin(clock.elapsedTime * 2.1) * 0.06;
+      if (monster.hp <= 0) {
+        monsterWarningRing.material.opacity = 0;
+        return;
       }
+
+      animateMonsterVisual(dt);
+      updateEnrageAura(dt);
+      updateMonsterTelegraph(dt);
 
       const bossStateTag = ui.bossStateTag;
       const toHunter = tempVectors.toHunter.subVectors(hunterGroup.position, monsterGroup.position);
@@ -1795,10 +2891,12 @@
         if (dist < 7.2 && monster.timer <= 0.4) {
           monster.state = 'telegraph_spin';
           monster.timer = monster.isEnraged ? 0.45 : 0.7;
+          audio.playTelegraph('spin', monster.isEnraged);
         } else if (monster.timer <= 0) {
           monster.state = 'telegraph_charge';
           monster.timer = monster.isEnraged ? 0.6 : 0.85;
           monster.chargeDir.copy(toHunter.normalize());
+          audio.playTelegraph('charge', monster.isEnraged);
         }
       }
       else if (monster.state === 'telegraph_charge') {
@@ -1814,6 +2912,7 @@
           monster.state = 'charge';
           monster.timer = 1.1;
           monster.hasDealtDamage = false;
+          audio.playWingWhoosh(monster.isEnraged);
         }
       }
       else if (monster.state === 'charge') {
@@ -1844,6 +2943,7 @@
           monster.state = 'spin';
           monster.timer = 0.52;
           monster.hasDealtDamage = false;
+          audio.playWingWhoosh(monster.isEnraged);
         }
       }
       else if (monster.state === 'spin') {
@@ -1885,6 +2985,13 @@
         }
       }
 
+      if (monster.hitFlashTimer > 0) {
+        monster.hitFlashTimer = Math.max(0, monster.hitFlashTimer - dt);
+        setMonsterEmissive(0xffffff);
+      } else if (monster.state !== 'telegraph_charge' && monster.state !== 'telegraph_spin') {
+        setMonsterEmissive(monster.isEnraged ? 0x3a002d : 0x000000);
+      }
+
       // 地圖邊界鎖定
       monsterGroup.position.x = Math.max(-60, Math.min(60, monsterGroup.position.x));
       monsterGroup.position.z = Math.max(-60, Math.min(60, monsterGroup.position.z));
@@ -1904,6 +3011,7 @@
       }
 
       audio.playRoar();
+      audio.playEnragePulse();
       triggerScreenShake(0.8, 1.2);
       particleSystem.spawnShockwave(monsterGroup.position, 28, 0xff7675);
       showBanner("⚡ 魔物發出震天龍吼！進入憤怒狂暴狀態！");
@@ -1920,6 +3028,7 @@
     function damagePlayer(amount) {
       player.hp = Math.max(0, player.hp - amount);
       audio.playHit(true);
+      triggerDamageFeedback(monsterGroup.position);
       triggerScreenShake(0.85, 0.35);
       spawnFloatingText(hunterGroup.position, `-${amount}`, "#ff4757");
       if (player.hp <= 0) {
@@ -1930,13 +3039,19 @@
     /* ==============================================================
        12. 相機系統 (Third-Person Chase / Target Lock-on / Free Look)
        ============================================================== */
+    function lerpAngle(current, target, alpha) {
+      const delta = Math.atan2(Math.sin(target - current), Math.cos(target - current));
+      return current + delta * alpha;
+    }
+
     function updateCamera(dt) {
       if (isLockOn) {
         // 鎖定模式：相機平滑朝向獵人與魔物連線
         const toBoss = tempVectors.toBoss.subVectors(monsterGroup.position, hunterGroup.position);
         toBoss.y = 0;
         if (toBoss.lengthSq() > 0) {
-          cameraYaw = THREE.MathUtils.lerp(cameraYaw, Math.atan2(toBoss.x, toBoss.z) + Math.PI, 6 * dt);
+          const targetYaw = Math.atan2(toBoss.x, toBoss.z) + Math.PI;
+          cameraYaw = lerpAngle(cameraYaw, targetYaw, Math.min(1, 6 * dt));
         }
 
         // 更新螢幕鎖定準星位置
@@ -1951,7 +3066,10 @@
       }
 
       // 相機球形座標計算
-      const camDist = 18;
+      const lockDistance = hunterGroup.position.distanceTo(monsterGroup.position);
+      const camDist = isLockOn
+        ? THREE.MathUtils.clamp(12 + lockDistance * 0.22, 14, 24)
+        : 18;
       const camY = Math.sin(cameraPitch) * camDist + 3.2;
       const horizDist = Math.cos(cameraPitch) * camDist;
 
@@ -1991,7 +3109,9 @@
         player.potions,
         player.sharpness.toFixed(1),
         Math.ceil(monster.hp),
-        sharpness.name
+        sharpness.name,
+        gameStats.victories,
+        gameStats.defeats
       ].join('|');
       if (snapshot === lastHudSnapshot) return;
       lastHudSnapshot = snapshot;
@@ -2002,6 +3122,9 @@
       ui.staminaBar.style.width = `${(player.stamina / player.maxStamina) * 100}%`;
       ui.staminaText.innerText = `${Math.floor(player.stamina)} / ${player.maxStamina}`;
       ui.potionCount.innerText = player.potions;
+      if (ui.statsSummary) {
+        ui.statsSummary.innerText = `${gameStats.victories}勝 ${gameStats.defeats}敗`;
+      }
 
       // 斬味
       ui.sharpnessFill.style.width = `${player.sharpness}%`;
@@ -2016,8 +3139,15 @@
     }
 
     function endGame(victory) {
+      if (gameOver) return;
       gameOver = true;
       isPaused = false;
+      gameStats.hunts += 1;
+      if (victory) gameStats.victories += 1;
+      else gameStats.defeats += 1;
+      writeStats(saveStorage, gameStats);
+      lastHudSnapshot = '';
+      updateHUD();
       resetInputState();
       ui.pauseButton.style.display = 'none';
       const overlay = document.getElementById('message-overlay');
@@ -2049,9 +3179,12 @@
         return;
       }
 
-      if (!gameOver && !isPaused) {
+      if (!gameOver && !isPaused && pendingAssetLoads === 0) {
+        hunterMixer?.update(rawDt);
+        monsterMixer?.update(rawDt);
         updatePlayer(rawDt);
         updateMonster(rawDt);
+        updateBladeTrail(rawDt);
         particleSystem.update(rawDt);
         updateHUD();
       }

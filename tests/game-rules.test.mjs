@@ -7,6 +7,17 @@ import {
   isWithinRange,
   nextComboStep
 } from "../src/game-rules.mjs";
+import {
+  SAVE_KEY,
+  STATS_KEY,
+  createSaveState,
+  normalizeSaveState,
+  readSave,
+  readStats,
+  removeSave,
+  writeSave,
+  writeStats
+} from "../src/save-system.mjs";
 
 test("sharpness levels resolve from highest matching threshold", () => {
   assert.equal(getSharpnessLevel(100).name, "白斬");
@@ -43,4 +54,48 @@ test("range checks reject negative distances", () => {
   assert.equal(isWithinRange(4.9, 5), true);
   assert.equal(isWithinRange(5.1, 5), false);
   assert.equal(isWithinRange(-1, 5), false);
+});
+
+test("save state round-trips combat progress and clamps unsafe values", () => {
+  const storage = new Map();
+  storage.getItem = storage.get.bind(storage);
+  storage.setItem = (key, value) => storage.set(key, value);
+  storage.removeItem = storage.delete.bind(storage);
+
+  const state = createSaveState({
+    player: { hp: 87, stamina: 42, sharpness: 18, potions: 2 },
+    monster: { hp: 340, headHp: 0, tailHp: 90, isHeadBroken: true, isTailBroken: false },
+    hunterPosition: { x: 4, y: 0, z: 18 },
+    monsterPosition: { x: -2, y: 0, z: -8 },
+    camera: { yaw: 1.2, pitch: 0.5 },
+    stats: { hunts: 3, victories: 2, defeats: 1 },
+    weaponMode: "dualblades"
+  });
+
+  assert.equal(writeSave(storage, state), true);
+  assert.equal(storage.has(SAVE_KEY), true);
+  assert.equal(storage.has(STATS_KEY), true);
+  assert.deepEqual(readSave(storage).player.position, { x: 4, y: 0, z: 18 });
+  assert.equal(readSave(storage).monster.isHeadBroken, true);
+  assert.equal(readSave(storage).monster.hasRoared60, true);
+  assert.equal(readSave(storage).monster.hasRoared25, false);
+  assert.equal(readSave(storage).equipment.weaponMode, "dualblades");
+  assert.deepEqual(readStats(storage), { hunts: 3, victories: 2, defeats: 1 });
+  assert.equal(writeSave(storage, { ...state, player: { ...state.player, hp: 0 } }), false);
+  assert.equal(writeStats(storage, { hunts: 4, victories: 3, defeats: 1 }), true);
+  assert.deepEqual(readStats(storage), { hunts: 4, victories: 3, defeats: 1 });
+
+  const unsafe = normalizeSaveState({
+    version: 1,
+    player: { hp: 999, stamina: -10, sharpness: 400, potions: 9 },
+    monster: { hp: -2, headHp: 900, tailHp: -4 },
+    camera: { pitch: 9 }
+  });
+  assert.equal(unsafe.player.hp, 100);
+  assert.equal(unsafe.player.stamina, 0);
+  assert.equal(unsafe.player.potions, 3);
+  assert.equal(unsafe.monster.hp, 0);
+  assert.equal(unsafe.camera.pitch, 1.2);
+  assert.equal(removeSave(storage), true);
+  assert.equal(readSave(storage), null);
 });

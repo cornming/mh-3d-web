@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "node --check src/game-rules.mjs",
+    "check": "node --check src/game-rules.mjs && node --check src/save-system.mjs",
     "test": "node --test"
   },
   "engines": {
