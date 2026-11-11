@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 import bpy
-from mathutils import Vector
+from mathutils import Matrix
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -231,10 +231,25 @@ def cube(name, location, dimensions, mat, parent_obj=None, bevel=0.0, rotation=N
     return obj
 
 
-def cylinder(name, location, radius, depth, mat, parent_obj=None, rotation=None, vertices=12, smooth=True):
+def align_primitive_axis(obj, axis):
+    """本腳本的座標一律採 Three.js 慣例：+Y 朝上、+Z 朝前。
+
+    Blender 的圓柱與圓錐預設沿 Z 軸，因此預設先把網格轉成沿 Y 軸
+    （與 THREE.CylinderGeometry／ConeGeometry 相同，圓錐尖端朝 +Y）；
+    需要讓尖端朝前（+Z）時，才傳入 axis="z" 保留 Blender 的原始朝向。
+    """
+    if axis == "y":
+        obj.data.transform(Matrix.Rotation(-math.pi / 2.0, 4, "X"))
+        obj.data.update()
+    elif axis != "z":
+        raise ValueError(f"unsupported primitive axis: {axis}")
+
+
+def cylinder(name, location, radius, depth, mat, parent_obj=None, rotation=None, vertices=12, smooth=True, axis="y"):
     bpy.ops.mesh.primitive_cylinder_add(vertices=vertices, radius=radius, depth=depth, location=location)
     obj = bpy.context.object
     obj.name = name
+    align_primitive_axis(obj, axis)
     if rotation:
         obj.rotation_euler = rotation
     finish(obj, mat, smooth=smooth)
@@ -243,10 +258,11 @@ def cylinder(name, location, radius, depth, mat, parent_obj=None, rotation=None,
     return obj
 
 
-def cone(name, location, radius, depth, mat, parent_obj=None, rotation=None, vertices=8, smooth=False):
+def cone(name, location, radius, depth, mat, parent_obj=None, rotation=None, vertices=8, smooth=False, axis="y"):
     bpy.ops.mesh.primitive_cone_add(vertices=vertices, radius1=radius, radius2=0.04, depth=depth, location=location)
     obj = bpy.context.object
     obj.name = name
+    align_primitive_axis(obj, axis)
     if rotation:
         obj.rotation_euler = rotation
     finish(obj, mat, smooth=smooth)
@@ -309,6 +325,9 @@ def export(filepath):
         filepath=str(filepath),
         export_format="GLB",
         export_apply=True,
+        # 場景已直接以 glTF／Three.js 的 Y-up 座標建模；若讓匯出器再做一次
+        # Z-up→Y-up 轉換，整個模型會被多轉 90°（獵人躺平、地形變成直立的牆）。
+        export_yup=False,
         export_animations=True,
         export_materials="EXPORT",
     )
@@ -340,7 +359,7 @@ def create_hunter():
     cube("chest_plate", (0.0, 1.54, 0.58), (0.82, 0.62, 0.14), bone, root, bevel=0.08, rotation=(math.radians(-12), 0.0, 0.0))
     uv_sphere("back_shell", (0.0, 1.42, -0.38), (0.7, 0.82, 0.24), cloth, root)
     for index, height in enumerate((1.92, 2.12, 2.28)):
-        cone(f"back_spine_{index}", (0.0, height, -0.38), 0.16 - index * 0.025, 0.5 - index * 0.08, bone, root, vertices=6)
+        cone(f"back_spine_{index}", (0.0, height - 0.12, -0.6), 0.16 - index * 0.025, 0.5 - index * 0.08, bone, root, rotation=(math.radians(-62), 0.0, 0.0), vertices=6)
     uv_sphere("belt", (0.0, 0.88, 0.0), (0.72, 0.2, 0.48), leather, root)
 
     for side in (-1, 1):
@@ -353,7 +372,7 @@ def create_hunter():
         ico(f"shoulder_{side_name}", (side * 0.64, 1.98, 0.0), (0.38, 0.3, 0.44), bone, root)
         cylinder(f"arm_upper_{side_name}", (side * 0.72, 1.56, 0.08), 0.16, 0.64, leather, root, rotation=(0.0, 0.0, math.radians(side * 13)))
         cylinder(f"arm_lower_{side_name}", (side * 0.77, 1.18, 0.22), 0.13, 0.58, chitin, root, rotation=(math.radians(side * 18), 0.0, math.radians(side * 8)))
-        cone(f"shoulder_spike_{side_name}", (side * 0.72, 2.26, 0.02), 0.18, 0.68, bone, root, rotation=(0.0, math.radians(side * -22), 0.0), vertices=6)
+        cone(f"shoulder_spike_{side_name}", (side * 0.8, 2.26, 0.02), 0.18, 0.68, bone, root, rotation=(0.0, 0.0, math.radians(side * -28)), vertices=6)
         ico(f"gauntlet_{side_name}", (side * 0.78, 1.03, 0.35), (0.2, 0.2, 0.23), bone, root)
 
     cylinder("neck_guard", (0.0, 2.08, 0.0), 0.26, 0.38, chitin, root, vertices=8)
@@ -369,7 +388,7 @@ def create_hunter():
     cube("helmet_front", (0.0, 2.48, 0.39), (0.58, 0.36, 0.2), bone, root, bevel=0.06, rotation=(math.radians(-9), 0.0, 0.0))
     cube("helmet_back", (0.0, 2.43, -0.3), (0.46, 0.48, 0.18), cloth, root, bevel=0.04)
     for side in (-1, 1):
-        cone(f"helmet_horn_{side}", (side * 0.27, 2.86, 0.04), 0.11, 0.64, bone, root, rotation=(math.radians(-18), math.radians(side * 22), 0.0), vertices=6)
+        cone(f"helmet_horn_{side}", (side * 0.3, 2.9, 0.0), 0.11, 0.64, bone, root, rotation=(math.radians(-20), 0.0, math.radians(side * -24)), vertices=6)
     cube("visor", (0.0, 2.51, 0.51), (0.34, 0.08, 0.08), mineral, root, bevel=0.025)
     ico("visor_glow", (0.0, 2.51, 0.55), (0.1, 0.035, 0.025), ember, root)
     add_animation_cycle(
@@ -383,7 +402,7 @@ def create_hunter():
     )
 
     weapon = empty("weaponPivot", (0.72, 1.28, 0.05), root)
-    cylinder("weapon_grip", (0.0, 0.32, 0.0), 0.1, 0.68, leather, weapon, rotation=(math.pi / 2, 0.0, 0.0))
+    cylinder("weapon_grip", (0.0, 0.32, 0.0), 0.1, 0.68, leather, weapon)
     ico("weapon_pommel", (0.0, -0.05, 0.0), (0.14, 0.14, 0.14), bone, weapon)
     cube("weapon_guard", (0.0, 0.75, 0.0), (0.98, 0.14, 0.24), bone, weapon, bevel=0.05)
     for side in (-1, 1):
@@ -394,7 +413,7 @@ def create_hunter():
     extruded_outline("weapon_blade_core", core_outline, 0.07, bone, weapon, z_center=0.11)
     cone("weapon_tip", (0.0, 3.52, 0.0), 0.27, 0.68, bone, weapon, vertices=6)
     for index, x in enumerate((-0.23, 0.23)):
-        cone(f"weapon_saw_{index}", (x, 2.38, 0.0), 0.08, 0.38, bone, weapon, rotation=(0.0, math.radians(x * 100), math.radians(x * 120)), vertices=6)
+        cone(f"weapon_saw_{index}", (x * 1.25, 2.38, 0.0), 0.08, 0.38, bone, weapon, rotation=(0.0, 0.0, math.radians(-62 if x > 0 else 62)), vertices=6)
     for ridge_index, ridge_y in enumerate((1.35, 1.85, 2.35, 2.85)):
         cube(f"weapon_ridge_{ridge_index}", (0.0, ridge_y, 0.12), (0.22 - ridge_index * 0.02, 0.07, 0.06), chitin, weapon, bevel=0.015)
     ico("weapon_gem", (0.0, 0.86, 0.13), (0.08, 0.08, 0.04), ember, weapon)
@@ -405,7 +424,7 @@ def create_hunter():
         side_name = "l" if side < 0 else "r"
         hand = empty(f"dual_hand_{side_name}", (side * 0.76, -0.06, 0.18), dual_weapon)
         hand.rotation_euler = (math.radians(10), 0.0, math.radians(side * -8))
-        cylinder(f"dual_grip_{side_name}", (0.0, 0.0, 0.0), 0.075, 0.52, leather, hand, rotation=(math.pi / 2, 0.0, 0.0), vertices=12)
+        cylinder(f"dual_grip_{side_name}", (0.0, 0.0, 0.0), 0.075, 0.52, leather, hand, vertices=12)
         ico(f"dual_pommel_{side_name}", (0.0, -0.24, 0.0), (0.095, 0.095, 0.095), bone, hand)
         cube(f"dual_guard_{side_name}", (0.0, 0.3, 0.0), (0.44, 0.09, 0.16), bone, hand, bevel=0.025)
         dual_outline = [(-0.085, 0.34), (0.085, 0.34), (0.17, 1.68), (0.09, 1.96), (0.0, 2.12), (-0.11, 1.82)]
@@ -438,7 +457,7 @@ def create_monster():
     for index, height in enumerate((1.76, 2.02, 2.28)):
         cube(f"belly_ridge_{index}", (0.0, height, 2.05), (1.3 - index * 0.18, 0.12, 0.12), chitin, root, bevel=0.04)
     for index, z in enumerate((1.0, 0.25, -0.5, -1.25)):
-        cone(f"dorsal_spine_{index}", (0.0, 3.55 - index * 0.16, z), 0.3 - index * 0.035, 1.05 - index * 0.11, bone, root, vertices=6)
+        cone(f"dorsal_spine_{index}", (0.0, 3.95 - index * 0.14, z - 0.12), 0.3 - index * 0.035, 1.05 - index * 0.11, bone, root, rotation=(math.radians(-24), 0.0, 0.0), vertices=6)
     for side in (-1, 1):
         side_name = "l" if side < 0 else "r"
         ico(f"shoulder_plate_{side_name}", (side * 1.55, 3.1, 1.0), (0.8, 0.55, 1.05), chitin, root)
@@ -446,11 +465,11 @@ def create_monster():
         cylinder(f"front_upper_leg_{side_name}", (side * 1.45, 1.65, 1.55), 0.42, 1.72, hide, root, rotation=(math.radians(side * 14), 0.0, math.radians(side * 12)))
         ico(f"front_elbow_{side_name}", (side * 1.52, 0.92, 1.85), (0.48, 0.42, 0.5), chitin, root)
         cylinder(f"front_lower_leg_{side_name}", (side * 1.48, 0.54, 2.08), 0.3, 0.9, hide_light, root, rotation=(math.radians(side * 12), 0.0, math.radians(side * 10)))
-        cone(f"front_claw_{side_name}", (side * 1.48, 0.12, 2.48), 0.3, 1.15, bone, root, rotation=(math.radians(-22), math.radians(side * 8), 0.0), vertices=6)
+        cone(f"front_claw_{side_name}", (side * 1.48, 0.2, 2.48), 0.3, 1.15, bone, root, rotation=(math.radians(7), math.radians(side * 8), 0.0), vertices=6, axis="z")
         cylinder(f"hind_upper_leg_{side_name}", (side * 1.42, 1.5, -1.65), 0.52, 2.1, hide, root, rotation=(math.radians(side * 23), 0.0, math.radians(side * -14)))
         ico(f"hind_knee_{side_name}", (side * 1.58, 0.66, -2.06), (0.58, 0.52, 0.6), chitin, root)
         cylinder(f"hind_lower_leg_{side_name}", (side * 1.62, 0.45, -2.36), 0.34, 1.15, hide_light, root, rotation=(math.radians(side * -16), 0.0, math.radians(side * -10)))
-        cone(f"hind_claw_{side_name}", (side * 1.68, 0.12, -2.65), 0.38, 1.36, bone, root, rotation=(math.radians(-28), math.radians(side * 8), 0.0), vertices=6)
+        cone(f"hind_claw_{side_name}", (side * 1.68, 0.24, -2.1), 0.38, 1.36, bone, root, rotation=(math.radians(7), math.radians(side * 10), 0.0), vertices=6, axis="z")
 
     head = empty("head", (0.0, 3.2, 4.45), root)
     uv_sphere("head_plates", (0.0, 0.0, 0.0), (1.48, 1.12, 1.58), chitin, head, segments=28, ring_count=18, surface_noise=0.05)
@@ -471,9 +490,9 @@ def create_monster():
         vertices = [(0.0, 0.0, 0.0), (side * 1.35, 0.3, 0.55), (side * 2.55, 0.02, 0.05), (side * 2.25, -0.4, -1.25), (side * 1.15, -0.25, -1.65)]
         faces = [(0, 1, 4), (1, 2, 3), (1, 3, 4)]
         mesh_object(f"wing_membrane_{side_name}", vertices, faces, wing, wing_root)
-        cone(f"wing_bone_outer_{side_name}", (side * 1.28, 0.03, -0.1), 0.13, 3.2, bone, wing_root, rotation=(0.0, math.radians(side * 69), 0.0), vertices=6)
-        cone(f"wing_bone_lower_{side_name}", (side * 1.1, -0.38, -0.72), 0.1, 2.2, bone, wing_root, rotation=(math.radians(side * 18), math.radians(side * 55), 0.0), vertices=6)
-        cone(f"wing_claw_{side_name}", (side * 1.42, 0.28, 0.64), 0.14, 0.72, bone, wing_root, rotation=(math.radians(-45), math.radians(side * 28), 0.0), vertices=6)
+        cone(f"wing_bone_outer_{side_name}", (side * 1.28, 0.03, -0.1), 0.13, 3.2, bone, wing_root, rotation=(0.0, math.radians(side * 69), 0.0), vertices=6, axis="z")
+        cone(f"wing_bone_lower_{side_name}", (side * 1.1, -0.38, -0.72), 0.1, 2.2, bone, wing_root, rotation=(math.radians(side * 18), math.radians(side * 55), 0.0), vertices=6, axis="z")
+        cone(f"wing_claw_{side_name}", (side * 1.42, 0.28, 0.64), 0.14, 0.72, bone, wing_root, rotation=(math.radians(-45), math.radians(side * 28), 0.0), vertices=6, axis="z")
 
     tail = empty("tail", (0.0, 2.18, -3.25), root)
     for index in range(5):
@@ -482,8 +501,8 @@ def create_monster():
         if index in (1, 2, 3):
             for side in (-1, 1):
                 side_name = "l" if side < 0 else "r"
-                cone(f"tail_fin_{index}_{side_name}", (side * (scale + 0.14), 0.02 - index * 0.05, -index * 1.15), 0.12, 0.58 - index * 0.06, bone, tail, rotation=(0.0, math.radians(side * 68), math.radians(side * -18)), vertices=6)
-    cone("tail_spike", (0.0, -0.2, -5.95), 0.36, 1.7, bone, tail, rotation=(math.pi, 0.0, 0.0), vertices=6)
+                cone(f"tail_fin_{index}_{side_name}", (side * (scale + 0.14), 0.02 - index * 0.05, -index * 1.15), 0.12, 0.58 - index * 0.06, bone, tail, rotation=(0.0, math.radians(side * 112), math.radians(side * 12)), vertices=6, axis="z")
+    cone("tail_spike", (0.0, -0.2, -5.95), 0.36, 1.7, bone, tail, rotation=(math.pi, 0.0, 0.0), vertices=6, axis="z")
     add_animation_cycle(
         bpy.data.objects.get("dorsal_spine_0"),
         "MonsterIdleSpine",
@@ -551,27 +570,41 @@ def create_environment():
         side = -1 if rib_idx % 2 == 0 else 1
         pair = rib_idx // 2
         rib_z = (pair - 1.0) * 1.65
+        rib_radius = 0.22 - pair * 0.02
+        rib_length = 4.2 - pair * 0.25
+        # 肋骨自地面兩側向上、往脊椎中線內收，形成拱形的胸腔骨架。
+        lean = math.radians(30)
+        center_x = side * 1.55
+        center_y = math.cos(lean) * rib_length * 0.5 - 0.22
         rib = cylinder(
             f"ancient_rib_{rib_idx}",
-            (side * 1.35, 1.35 + pair * 0.12, rib_z),
-            0.22 - pair * 0.02,
-            4.2 - pair * 0.25,
+            (center_x, center_y, rib_z),
+            rib_radius,
+            rib_length,
             ancient_bone,
             relic,
-            rotation=(math.radians(12), math.radians(side * 16), math.radians(side * -38)),
+            rotation=(0.0, 0.0, side * lean),
             vertices=10,
             smooth=True,
         )
         organic_displace(rib, 0.025, 0.9)
+        top_x = center_x - side * math.sin(lean) * rib_length * 0.5
+        top_y = center_y + math.cos(lean) * rib_length * 0.5
+        tip_lean = math.radians(56)
+        tip_length = 0.85
         cone(
             f"ancient_rib_tip_{rib_idx}",
-            (side * 0.32, 2.95 + pair * 0.08, rib_z - 0.15),
-            0.16,
-            0.85,
+            (
+                top_x - side * math.sin(tip_lean) * tip_length * 0.42,
+                top_y + math.cos(tip_lean) * tip_length * 0.42,
+                rib_z,
+            ),
+            rib_radius,
+            tip_length,
             ancient_bone,
             relic,
-            rotation=(math.radians(-14), 0.0, math.radians(side * -62)),
-            vertices=6,
+            rotation=(0.0, 0.0, side * tip_lean),
+            vertices=10,
             smooth=True,
         )
     for vert_idx in range(4):
@@ -643,10 +676,10 @@ def create_environment():
         )
 
     # 倒木與裸露根系，讓低視角鏡頭有更自然的前景層次。
-    for index, (x, y, z, length, rotation) in enumerate((
-        (-14.0, 0.9, -8.0, 7.5, 0.3),
-        (16.0, 0.72, 4.0, 6.2, -0.9),
-        (-22.0, 0.62, 15.0, 5.4, 1.05),
+    for index, (x, y, z, length) in enumerate((
+        (-14.0, 0.62, -8.0, 7.5),
+        (16.0, 0.68, 4.0, 6.2),
+        (-22.0, 0.74, 15.0, 5.4),
     )):
         log = cylinder(
             f"fallen_log_{index}",
@@ -655,11 +688,11 @@ def create_environment():
             length,
             bark,
             root,
-            rotation=(0.0, math.pi / 2, rotation),
+            rotation=(0.06 * (index + 1) * (1 if index % 2 == 0 else -1), math.pi / 2, 0.0),
             vertices=18,
             smooth=True,
+            axis="z",
         )
-        log.rotation_euler.x += 0.12 * (index + 1)
         for vine_index in range(3):
             uv_sphere(
                 f"log_moss_{index}_{vine_index}",
