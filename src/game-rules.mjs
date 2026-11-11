@@ -50,3 +50,54 @@ export function nextComboStep(currentStep, comboWindowActive, comboLength = 3) {
 export function isWithinRange(distance, range) {
   return distance >= 0 && distance <= range;
 }
+
+export const QUEST_TIME_LIMIT_SECONDS = 15 * 60;
+
+export const HUNT_RANKS = Object.freeze(["S", "A", "B", "C"]);
+
+/** 把秒數格式化成任務計時器使用的 MM:SS。 */
+export function formatQuestClock(seconds) {
+  const total = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
+  const minutes = Math.floor(total / 60);
+  const rest = total % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(rest).padStart(2, "0")}`;
+}
+
+/** 依討伐時間與承受傷害評定任務評價；未達成任務時不給評價。 */
+export function evaluateHuntRank({ victory, elapsedSeconds, damageTaken }) {
+  if (!victory) return null;
+  const time = Math.max(0, Number.isFinite(elapsedSeconds) ? elapsedSeconds : Infinity);
+  const taken = Math.max(0, Number.isFinite(damageTaken) ? damageTaken : Infinity);
+  if (time <= 180 && taken <= 40) return "S";
+  if (time <= 300 && taken <= 100) return "A";
+  if (time <= 480) return "B";
+  return "C";
+}
+
+/** 平面 (XZ) 上，點到線段的最近點；t=0 為 a 端、t=1 為 b 端。 */
+export function closestPointOnSegment2D(px, pz, ax, az, bx, bz) {
+  const dx = bx - ax;
+  const dz = bz - az;
+  const lengthSq = dx * dx + dz * dz;
+  const t = lengthSq > 0 ? clamp(((px - ax) * dx + (pz - az) * dz) / lengthSq, 0, 1) : 0;
+  const x = ax + dx * t;
+  const z = az + dz * t;
+  return { t, x, z, distance: Math.hypot(px - x, pz - z) };
+}
+
+/**
+ * 以魔物脊椎線段（尾端 → 頭端）判定一次揮擊命中的部位。
+ * zones.tailUntil／zones.headFrom 是線段參數 t 上的分界；radii 為各部位的身體半徑。
+ * 未命中時回傳 null。
+ */
+export function resolveMonsterHit({ strike, spine, zones, radii }) {
+  const closest = closestPointOnSegment2D(
+    strike.x, strike.z,
+    spine.tail.x, spine.tail.z,
+    spine.head.x, spine.head.z
+  );
+  const zone = closest.t >= zones.headFrom ? "head" : (closest.t <= zones.tailUntil ? "tail" : "body");
+  const reach = Math.max(0, strike.radius) + Math.max(0, radii[zone] ?? 0);
+  if (closest.distance > reach) return null;
+  return { zone, t: closest.t, distance: closest.distance, point: { x: closest.x, z: closest.z } };
+}

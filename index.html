@@ -1,3206 +1,501 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant-TW">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>魔物獵人 3D (Monster Hunter 3D Web) - 強化版</title>
-  <style>
-    :root {
-      --mh-green: #2ecc71;
-      --mh-yellow: #f1c40f;
-      --mh-red: #e74c3c;
-      --mh-blue: #3498db;
-      --mh-dark: rgba(18, 22, 28, 0.88);
-      --mh-border: rgba(212, 175, 55, 0.45);
-    }
-    * {
-      box-sizing: border-box;
-    }
-    body {
-      margin: 0;
-      overflow: hidden;
-      background-color: #0b0e14;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Microsoft JhengHei', sans-serif;
-      user-select: none;
-      touch-action: none;
-    }
-
-    #canvas-container {
-      width: 100vw;
-      height: 100vh;
-      display: block;
-    }
-
-    /* 頂部 HUD */
-    #hud {
-      position: absolute;
-      top: 16px;
-      left: 20px;
-      right: 20px;
-      pointer-events: none;
-      display: flex;
-      justify-content: space-between;
-      gap: 20px;
-    }
-
-    .status-panel {
-      background: var(--mh-dark);
-      padding: 14px 18px;
-      border-radius: 10px;
-      border: 1px solid var(--mh-border);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-      color: #fff;
-      backdrop-filter: blur(8px);
-    }
-
-    .hunter-panel {
-      min-width: 320px;
-    }
-
-    .boss-panel {
-      min-width: 380px;
-    }
-
-    .bar-row {
-      display: flex;
-      align-items: center;
-      margin-bottom: 8px;
-      gap: 10px;
-    }
-
-    .bar-title {
-      font-size: 13px;
-      font-weight: 700;
-      width: 65px;
-      text-shadow: 1px 1px 2px #000;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .bar-container {
-      flex: 1;
-      height: 16px;
-      background: #1e272e;
-      border-radius: 4px;
-      overflow: hidden;
-      border: 1px solid rgba(0, 0, 0, 0.8);
-      position: relative;
-    }
-
-    .bar-fill {
-      height: 100%;
-      transition: width 0.15s ease-out;
-    }
-
-    #hp-bar {
-      background: linear-gradient(90deg, #27ae60, #2ecc71);
-      width: 100%;
-    }
-
-    #stamina-bar {
-      background: linear-gradient(90deg, #d35400, #f39c12, #f1c40f);
-      width: 100%;
-      transition: width 0.05s linear;
-    }
-
-    #boss-hp-bar {
-      background: linear-gradient(90deg, #962d22, #e74c3c);
-      width: 100%;
-    }
-
-    .bar-text {
-      position: absolute;
-      right: 6px;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 11px;
-      font-weight: bold;
-      color: #fff;
-      text-shadow: 1px 1px 3px #000;
-    }
-
-    /* 斬味條 (Sharpness) */
-    .sharpness-container {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 12px;
-      margin-top: 6px;
-    }
-
-    .sharpness-bar {
-      width: 100px;
-      height: 8px;
-      background: #2f3640;
-      border-radius: 3px;
-      overflow: hidden;
-      border: 1px solid #111;
-    }
-
-    #sharpness-fill {
-      width: 100%;
-      height: 100%;
-      background: #00d2d3;
-      transition: width 0.2s, background-color 0.3s;
-    }
-
-    /* 道具與快捷列 */
-    .item-dock {
-      display: flex;
-      gap: 14px;
-      margin-top: 10px;
-      font-size: 13px;
-    }
-
-    .item-pill {
-      background: rgba(255, 255, 255, 0.08);
-      padding: 4px 10px;
-      border-radius: 6px;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    /* 魔物狀態標籤 */
-    .boss-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 6px;
-    }
-
-    #boss-name {
-      font-size: 15px;
-      font-weight: 800;
-      color: #ffd32a;
-      letter-spacing: 0.5px;
-    }
-
-    #boss-state-tag {
-      font-size: 12px;
-      padding: 2px 8px;
-      border-radius: 4px;
-      background: #e67e22;
-      font-weight: bold;
-      color: #fff;
-      transition: background 0.2s;
-    }
-
-    .parts-status {
-      display: flex;
-      gap: 12px;
-      font-size: 11px;
-      color: #d2dae2;
-      margin-top: 6px;
-    }
-
-    .part-broken {
-      color: #ff5252;
-      text-decoration: line-through;
-    }
-
-    /* 左下操作與提示面板 */
-    #controls-hint {
-      position: absolute;
-      bottom: 20px;
-      left: 20px;
-      background: var(--mh-dark);
-      color: #e4e7eb;
-      padding: 14px 18px;
-      border-radius: 10px;
-      font-size: 13px;
-      line-height: 1.7;
-      border: 1px solid var(--mh-border);
-      pointer-events: none;
-      backdrop-filter: blur(8px);
-    }
-
-    #runtime-error {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: min(560px, calc(100vw - 32px));
-      padding: 20px;
-      border: 1px solid #ff4757;
-      border-radius: 10px;
-      background: rgba(30, 15, 20, 0.95);
-      color: #fff;
-      text-align: center;
-      line-height: 1.6;
-      pointer-events: auto;
-      z-index: 400;
-    }
-
-    #asset-loading {
-      position: absolute;
-      inset: 0;
-      display: grid;
-      place-items: center;
-      background: radial-gradient(circle at center, rgba(45, 72, 56, 0.68), rgba(8, 16, 13, 0.94));
-      color: #f5f6fa;
-      font-size: 18px;
-      font-weight: 800;
-      letter-spacing: 1px;
-      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.85);
-      pointer-events: auto;
-      z-index: 180;
-      transition: opacity 0.35s ease;
-    }
-
-    #asset-loading.hidden {
-      opacity: 0;
-      pointer-events: none;
-    }
-
-    #pause-button {
-      position: absolute;
-      top: 16px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 6px 14px;
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      border-radius: 6px;
-      background: rgba(18, 22, 28, 0.88);
-      color: #fff;
-      cursor: pointer;
-      pointer-events: auto;
-      z-index: 210;
-    }
-
-    #pause-button:focus-visible,
-    #save-controls button:focus-visible,
-    .touch-btn:focus-visible,
-    .sub-btn:focus-visible {
-      outline: 3px solid #74b9ff;
-      outline-offset: 2px;
-    }
-
-    #save-controls {
-      position: absolute;
-      top: 56px;
-      left: 20px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      z-index: 210;
-      pointer-events: auto;
-    }
-
-    #save-controls button {
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      border-radius: 6px;
-      padding: 6px 10px;
-      background: rgba(18, 22, 28, 0.88);
-      color: #fff;
-      cursor: pointer;
-      font-weight: 700;
-    }
-
-    #save-controls button:hover {
-      background: rgba(52, 73, 94, 0.95);
-    }
-
-    #save-status {
-      max-width: 240px;
-      color: #d2dae2;
-      font-size: 11px;
-      text-shadow: 1px 1px 2px #000;
-    }
-
-    #weapon-controls {
-      position: absolute;
-      top: 92px;
-      left: 20px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      z-index: 210;
-      color: #e9eef2;
-      font-size: 12px;
-      text-shadow: 1px 1px 2px #000;
-      pointer-events: auto;
-    }
-
-    #weapon-controls button {
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      border-radius: 6px;
-      padding: 5px 9px;
-      background: rgba(18, 22, 28, 0.88);
-      color: #fff;
-      cursor: pointer;
-      font-weight: 700;
-    }
-
-    #weapon-controls button.active {
-      border-color: #ffd32a;
-      background: rgba(156, 98, 20, 0.95);
-      box-shadow: 0 0 12px rgba(255, 211, 42, 0.34);
-    }
-
-    #touch-controls {
-      display: none;
-      position: absolute;
-      right: 12px;
-      bottom: 12px;
-      left: 12px;
-      justify-content: space-between;
-      align-items: end;
-      pointer-events: none;
-      z-index: 120;
-    }
-
-    .touch-dpad,
-    .touch-actions {
-      display: grid;
-      gap: 6px;
-      pointer-events: auto;
-    }
-
-    .touch-dpad {
-      grid-template-columns: repeat(3, 44px);
-      grid-template-rows: repeat(2, 44px);
-    }
-
-    .touch-dpad [data-hold-key="w"] { grid-column: 2; }
-    .touch-dpad [data-hold-key="a"] { grid-column: 1; grid-row: 2; }
-    .touch-dpad [data-hold-key="s"] { grid-column: 2; grid-row: 2; }
-    .touch-dpad [data-hold-key="d"] { grid-column: 3; grid-row: 2; }
-
-    .touch-actions {
-      grid-template-columns: repeat(2, minmax(64px, 1fr));
-      width: 150px;
-    }
-
-    .touch-btn {
-      min-width: 44px;
-      min-height: 44px;
-      padding: 5px;
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      border-radius: 8px;
-      background: rgba(18, 22, 28, 0.82);
-      color: #fff;
-      font-weight: 700;
-      touch-action: none;
-    }
-
-    .touch-btn[data-action="lock"] {
-      background: rgba(52, 73, 94, 0.86);
-    }
-
-    .touch-btn.active {
-      border-color: #74b9ff;
-      background: rgba(41, 128, 185, 0.92);
-      box-shadow: 0 0 14px rgba(116, 185, 255, 0.55);
-    }
-
-    @media (pointer: coarse), (max-width: 700px) {
-      #hud {
-        top: 8px;
-        left: 8px;
-        right: 8px;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-
-      .status-panel,
-      .hunter-panel,
-      .boss-panel {
-        min-width: 0;
-        width: 100%;
-        padding: 9px 11px;
-      }
-
-      .boss-panel {
-        order: -1;
-      }
-
-      #controls-hint {
-        display: none;
-      }
-
-      #pause-button {
-        top: auto;
-        right: 8px;
-        bottom: 8px;
-        left: auto;
-        transform: none;
-      }
-
-      #save-controls {
-        top: 214px;
-        left: 8px;
-        right: 8px;
-        justify-content: flex-start;
-      }
-
-      #weapon-controls {
-        top: 252px;
-        left: 8px;
-      }
-
-      #save-status {
-        max-width: 150px;
-      }
-
-      #touch-controls {
-        display: flex;
-      }
-    }
-
-    .key-badge {
-      display: inline-block;
-      background: #34495e;
-      color: #ecf0f1;
-      padding: 1px 7px;
-      border-radius: 4px;
-      font-weight: bold;
-      font-family: monospace;
-      border-bottom: 2px solid #1e272e;
-      margin: 0 2px;
-    }
-
-    /* 鎖定準星 */
-    #lockon-reticle {
-      position: absolute;
-      width: 44px;
-      height: 44px;
-      border: 2px solid #ff4757;
-      border-radius: 50%;
-      transform: translate(-50%, -50%);
-      pointer-events: none;
-      display: none;
-      box-shadow: 0 0 12px rgba(255, 71, 87, 0.8);
-      animation: pulseReticle 1s infinite alternate;
-    }
-
-    @keyframes pulseReticle {
-      0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.7; }
-      100% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
-    }
-
-    #impact-flash {
-      position: absolute;
-      inset: 0;
-      background: rgba(255, 220, 130, 0.28);
-      pointer-events: none;
-      opacity: 0;
-      z-index: 95;
-      mix-blend-mode: screen;
-    }
-
-    #impact-flash.active {
-      animation: impactFlash 0.16s ease-out forwards;
-    }
-
-    #damage-vignette {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      opacity: 0;
-      z-index: 94;
-      background: radial-gradient(ellipse at center, transparent 34%, rgba(255, 71, 87, 0.05) 58%, rgba(192, 57, 43, 0.68) 100%);
-      mix-blend-mode: screen;
-    }
-
-    #damage-vignette.active {
-      animation: damageVignette 0.42s ease-out forwards;
-    }
-
-    @keyframes damageVignette {
-      0% { opacity: 0.95; }
-      100% { opacity: 0; }
-    }
-
-    #damage-direction {
-      position: absolute;
-      width: 0;
-      height: 0;
-      border-left: 15px solid transparent;
-      border-right: 15px solid transparent;
-      border-bottom: 30px solid rgba(255, 71, 87, 0.92);
-      filter: drop-shadow(0 0 8px rgba(255, 71, 87, 0.85));
-      pointer-events: none;
-      display: none;
-      z-index: 97;
-    }
-
-    #damage-direction.active {
-      display: block;
-      animation: damageDirection 0.55s ease-out forwards;
-    }
-
-    @keyframes damageDirection {
-      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6) rotate(var(--damage-angle)); }
-      18% { opacity: 1; transform: translate(-50%, -50%) scale(1.1) rotate(var(--damage-angle)); }
-      100% { opacity: 0; transform: translate(-50%, -50%) scale(0.88) rotate(var(--damage-angle)); }
-    }
-
-    @keyframes impactFlash {
-      0% { opacity: 0.9; }
-      100% { opacity: 0; }
-    }
-
-    /* 浮動傷害數字 */
-    .damage-number {
-      position: absolute;
-      font-weight: 900;
-      font-size: 26px;
-      pointer-events: none;
-      text-shadow: 2px 2px 0 #000, -1px -1px 0 #000;
-      animation: floatDamage 0.75s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
-      z-index: 99;
-    }
-
-    @keyframes floatDamage {
-      0% { opacity: 0; transform: translateY(10px) scale(0.6); }
-      20% { opacity: 1; transform: translateY(0) scale(1.3); }
-      80% { opacity: 1; transform: translateY(-28px) scale(1); }
-      100% { opacity: 0; transform: translateY(-46px) scale(0.8); }
-    }
-
-    /* 橫幅通知 (例如部位破壞、魔物憤怒) */
-    #banner-notify {
-      position: absolute;
-      top: 18%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(0, 0, 0, 0.85);
-      border: 2px solid #ffd32a;
-      padding: 10px 36px;
-      color: #ffd32a;
-      font-size: 24px;
-      font-weight: 800;
-      letter-spacing: 2px;
-      border-radius: 8px;
-      pointer-events: none;
-      display: none;
-      box-shadow: 0 0 30px rgba(255, 211, 42, 0.4);
-      animation: bannerAnim 2.2s forwards;
-      z-index: 100;
-    }
-
-    @keyframes bannerAnim {
-      0% { opacity: 0; transform: translate(-50%, -70%) scale(0.85); }
-      15% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
-      25% { transform: translate(-50%, -50%) scale(1); }
-      85% { opacity: 1; }
-      100% { opacity: 0; transform: translate(-50%, -40%) scale(0.9); }
-    }
-
-    /* 結算畫面 */
-    #message-overlay {
-      position: absolute;
-      inset: 0;
-      background: rgba(10, 14, 20, 0.85);
-      backdrop-filter: blur(10px);
-      display: none;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      z-index: 200;
-    }
-
-    #main-msg {
-      font-size: 54px;
-      font-weight: 900;
-      letter-spacing: 3px;
-      text-shadow: 0 6px 20px rgba(0,0,0,0.9);
-      margin-bottom: 20px;
-    }
-
-    .sub-btn {
-      font-size: 18px;
-      color: #111;
-      font-weight: bold;
-      background: #ffd32a;
-      padding: 12px 32px;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      box-shadow: 0 6px 18px rgba(255, 211, 42, 0.4);
-      transition: transform 0.15s, background 0.2s;
-    }
-
-    .sub-btn:hover {
-      transform: scale(1.06);
-      background: #ffdf58;
-    }
-
-    /* 音訊啟動提示 */
-    #audio-tip {
-      position: absolute;
-      top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.7);
-      color: #ecf0f1;
-      font-size: 12px;
-      padding: 4px 12px;
-      border-radius: 20px;
-      border: 1px solid rgba(255,255,255,0.2);
-      pointer-events: none;
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#0f0c08">
+  <meta name="description" content="以 Three.js 製作的原創 3D 狩獵動作 Web 原型：在蒼林獵場討伐大型甲獸。">
+  <title>蒼林狩獵誌｜3D 狩獵動作原型</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Noto+Serif+TC:wght@600;900&display=swap">
+  <link rel="stylesheet" href="./styles/ui.css">
 </head>
-<body>
+<body data-phase="loading" data-input="keyboard">
 
-  <div id="audio-tip">🔊 點擊畫面即可啟用打擊與咆哮合成音效</div>
-  <div id="runtime-error" role="alert" aria-live="assertive" hidden></div>
-  <div id="asset-loading" role="status" aria-live="polite">🌿 正在載入 Blender 獵場與生物資產…</div>
-
-  <!-- HUD 面板 -->
-  <div id="hud">
-    <!-- 獵人狀態 -->
-    <div class="status-panel hunter-panel">
-      <div class="bar-row">
-        <span class="bar-title">❤️ HP</span>
-        <div class="bar-container">
-          <div id="hp-bar" class="bar-fill"></div>
-          <span id="hp-text" class="bar-text">100 / 100</span>
-        </div>
-      </div>
-      <div class="bar-row">
-        <span class="bar-title">⚡ 耐力</span>
-        <div class="bar-container">
-          <div id="stamina-bar" class="bar-fill"></div>
-          <span id="stamina-text" class="bar-text">100 / 100</span>
-        </div>
-      </div>
-      <div class="sharpness-container">
-        <span>🗡️ 斬味:</span>
-        <div class="sharpness-bar"><div id="sharpness-fill"></div></div>
-        <span id="sharpness-text" style="color: #00d2d3; font-weight: bold;">藍斬 (1.2x)</span>
-      </div>
-      <div class="item-dock">
-        <div class="item-pill">🧪 回覆藥: <b id="potion-count">3</b>/3 <span class="key-badge">E</span></div>
-        <div class="item-pill">🪨 砥石磨刀 <span class="key-badge">R</span></div>
-        <div class="item-pill" id="hunt-stats-pill">🏆 戰績: <b id="stats-summary">0勝 0敗</b></div>
-      </div>
-    </div>
-
-    <!-- 魔物狀態 -->
-    <div class="status-panel boss-panel">
-      <div class="boss-header">
-        <span id="boss-name">🔥 荒野轟龍 (Tigrex-Rex)</span>
-        <span id="boss-state-tag">巡弋警戒中</span>
-      </div>
-      <div class="bar-row" style="margin-bottom: 4px;">
-        <span class="bar-title" style="width: 50px;">HP</span>
-        <div class="bar-container" style="height: 20px;">
-          <div id="boss-hp-bar" class="bar-fill"></div>
-          <span id="boss-hp-text" class="bar-text">800 / 800</span>
-        </div>
-      </div>
-      <div class="parts-status">
-        <span id="part-head">頭部角: 正常</span>
-        <span id="part-tail">尾巴: 完好</span>
-        <span id="boss-enrage-badge" style="color: #ff4757; font-weight: bold; display: none;">🔥 怒氣爆發中！</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- 操作手冊 -->
-  <div id="controls-hint">
-    <b>🎮 獵人狩獵指南</b><br>
-    • <span class="key-badge">W</span><span class="key-badge">A</span><span class="key-badge">S</span><span class="key-badge">D</span> 移動獵人 ｜ <span class="key-badge">Space</span> 翻滾閃避（無敵幀）<br>
-    • <span class="key-badge">1</span> / <span class="key-badge">2</span> 切換武器（大劍／雙劍）<br>
-    • <span class="key-badge">J</span> 或 <span class="key-badge">左鍵</span> 輕砍三連段 ｜ <span class="key-badge">K</span> 長按蓄力重斬<br>
-    • <span class="key-badge">E</span> 飲用回覆藥 ｜ <span class="key-badge">R</span> 砥石研磨回復斬味<br>
-    • <span class="key-badge">Tab</span> / <span class="key-badge">F</span> 鎖定視角 ｜ 右鍵拖曳視角 ｜ <span class="key-badge">P</span> 暫停
-  </div>
-
-  <div id="lockon-reticle"></div>
-  <div id="impact-flash"></div>
-  <div id="damage-vignette"></div>
-  <div id="damage-direction" aria-hidden="true"></div>
-  <div id="banner-notify"></div>
-
-  <!-- 結算畫面 -->
-  <div id="message-overlay">
-    <div id="main-msg">QUEST CLEAR!</div>
-    <button id="restart-button" class="sub-btn" type="button">再次出發狩獵</button>
-  </div>
+  <!-- 圖示集：所有 HUD 與選單圖示皆為原創向量圖，透過 <use> 取用 -->
+  <svg class="sprite" aria-hidden="true" focusable="false">
+    <symbol id="i-greatsword" viewBox="0 0 24 24">
+      <g transform="rotate(45 12 12)" fill="currentColor">
+        <path d="M12 0.8 14.6 5v10.4H9.4V5z"/>
+        <path d="M6.6 15.4h10.8v1.9H6.6z"/>
+        <path d="M10.9 17.3h2.2v4h-2.2z"/>
+        <circle cx="12" cy="22.2" r="1.4"/>
+      </g>
+    </symbol>
+    <symbol id="i-dualblades" viewBox="0 0 24 24">
+      <g fill="currentColor">
+        <g transform="rotate(-34 12 14)">
+          <path d="M12 1.5 13.6 5v9.4h-3.2V5z"/><path d="M8.6 14.4h6.8v1.5H8.6z"/><path d="M11.1 15.9h1.8v4.6h-1.8z"/>
+        </g>
+        <g transform="rotate(34 12 14)">
+          <path d="M12 1.5 13.6 5v9.4h-3.2V5z"/><path d="M8.6 14.4h6.8v1.5H8.6z"/><path d="M11.1 15.9h1.8v4.6h-1.8z"/>
+        </g>
+      </g>
+    </symbol>
+    <symbol id="i-edge" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M2.5 15.5 17 4.2l4.5-1.7-1.7 4.5L8.5 21.5l-2.2-.8.9-2.2-2.6.9z"/>
+    </symbol>
+    <symbol id="i-potion" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" d="M9.4 2.8h5.2M10.3 2.8v5.6L5.6 16.9a2.9 2.9 0 0 0 2.6 4.3h7.6a2.9 2.9 0 0 0 2.6-4.3l-4.7-8.5V2.8"/>
+      <path fill="currentColor" d="M8.6 14.2h6.8l1.7 3.2a1.5 1.5 0 0 1-1.3 2.2H8.2a1.5 1.5 0 0 1-1.3-2.2z"/>
+    </symbol>
+    <symbol id="i-whetstone" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M3 15.2 7.4 10h13.1l-4.4 5.2z"/>
+      <path fill="currentColor" opacity=".62" d="M3 16.4h13.1v3.1H3zM17.3 15.9l3.2-3.8v3.1l-3.2 3.8z"/>
+      <path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M7 4.2l1.3 1.9M11.8 2.8v2.5M16.4 4.2l-1.3 1.9"/>
+    </symbol>
+    <symbol id="i-horn" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M4.5 20.5c-.4-8.6 4-15 14.5-17.4-3.3 3.2-5 7.3-5.2 12.3-.1 2.9-1.9 5-4.8 5.3z"/>
+    </symbol>
+    <symbol id="i-tail" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M2.2 7.2c5.6-.6 9.3 1.4 11.3 4.9 1.2 2.1 2.6 3 4.5 3.1l-.7-2.1 4.9 3.3-5.3 2.7.6-1.9c-3.2.2-5.5-1.3-7.1-4.1-1.6-2.8-4-3.9-8.2-3.5z"/>
+    </symbol>
+    <symbol id="i-rage" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M12.4 1.8c.9 3.7 5.1 5.8 5.1 11a5.5 5.5 0 0 1-11 0c0-1.9.7-3.2 1.7-4.3.2 1.7 1 2.8 2.2 3.3-.1-3.7-.2-6.8 2-10z"/>
+    </symbol>
+    <symbol id="i-down" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M4 9.5l8 6 8-6M4 15l8 6 8-6" opacity=".95"/>
+    </symbol>
+    <symbol id="i-opening" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M12 2.2l2.3 6.6 6.9.2-5.5 4.2 2 6.7L12 15.9 6.3 19.9l2-6.7L2.8 9l6.9-.2z"/>
+    </symbol>
+    <symbol id="i-hourglass" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" d="M6.5 3h11M6.5 21h11M8 3v3.4c0 1.5.7 2.8 2 3.6L11.6 11v2L10 14c-1.3.8-2 2.1-2 3.6V21M16 3v3.4c0 1.5-.7 2.8-2 3.6L12.4 11v2L14 14c1.3.8 2 2.1 2 3.6V21"/>
+      <path fill="currentColor" d="M9.8 18.7c0-1.3.9-2.4 2.2-3 1.3.6 2.2 1.7 2.2 3V20H9.8z"/>
+    </symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M6.5 4.5h3.8v15H6.5zM13.7 4.5h3.8v15h-3.8z"/>
+    </symbol>
+    <symbol id="i-target" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="6.2" fill="none" stroke="currentColor" stroke-width="1.8"/>
+      <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4"/>
+      <circle cx="12" cy="12" r="1.7" fill="currentColor"/>
+    </symbol>
+    <symbol id="i-warning" viewBox="0 0 24 24">
+      <path fill="currentColor" fill-rule="evenodd" d="M12 1.8 22.2 12 12 22.2 1.8 12zm-1.2 5.4.3 7.2h1.8l.3-7.2zm1.2 8.6a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6z"/>
+    </symbol>
+    <symbol id="i-claw" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" d="M6.2 3.2c1 5.2.9 10.4-1.6 17.3M12.3 2.6c1.2 6.1 1 11.7-1.1 18.8M18.3 3.2c1 5.2.8 10.4-1.6 17.3"/>
+    </symbol>
+    <symbol id="i-slash" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M3 19.5C6.2 9.7 12.3 4.6 21.5 3c-6.3 3.2-10 7.7-11.6 13.7-1.9.3-4.3 1.2-6.9 2.8z"/>
+      <path fill="currentColor" opacity=".55" d="M9.5 21c1.4-5.3 4.9-9.2 10.6-11.8-3.5 3.4-5.4 7-6 10.9z"/>
+    </symbol>
+    <symbol id="i-dodge" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M4.5 13.5a7.5 7.5 0 1 0 2.3-6.3M4 3.5v4.4h4.4"/>
+      <circle cx="12" cy="13" r="2" fill="currentColor"/>
+    </symbol>
+    <symbol id="i-charge" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M13.6 1.8 5.2 13.3h5.4l-1.4 8.9 8.6-12.1h-5.5z"/>
+    </symbol>
+    <symbol id="i-swap" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 8.5h14.5M15 5l3.5 3.5L15 12M20 15.5H5.5M9 12l-3.5 3.5L9 19"/>
+    </symbol>
+    <symbol id="i-scroll" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round" d="M7 4h11.5v13.5a2.5 2.5 0 0 1-2.5 2.5H6.5A2.5 2.5 0 0 1 4 17.5V16h10v1.5a2.5 2.5 0 0 0 2.5 2.5M7 4v12M10 8h5.5M10 11.5h5.5"/>
+    </symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24">
+      <path fill="currentColor" fill-rule="evenodd" d="M10.5 2h3l.6 2.6 1.7.7 2.3-1.4 2.1 2.1-1.4 2.3.7 1.7 2.5.5v3l-2.5.6-.7 1.7 1.4 2.3-2.1 2.1-2.3-1.4-1.7.7-.6 2.5h-3l-.5-2.5-1.7-.7-2.3 1.4-2.1-2.1 1.4-2.3-.7-1.7L2 13.5v-3l2.6-.5.7-1.7-1.4-2.3L6 3.9l2.3 1.4 1.7-.7zM12 8.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2z"/>
+    </symbol>
+    <symbol id="i-sound" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M3.5 9.2h3.7l5.3-4.4v14.4l-5.3-4.4H3.5z"/>
+      <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M15.8 8.8a4.6 4.6 0 0 1 0 6.4M18.5 6a8.5 8.5 0 0 1 0 12"/>
+    </symbol>
+  </svg>
 
   <div id="canvas-container"></div>
 
-  <button id="pause-button" type="button" aria-pressed="false">暫停</button>
-
-  <div id="save-controls" aria-label="存檔操作">
-    <button id="save-button" type="button">💾 儲存</button>
-    <button id="load-button" type="button">↺ 讀取</button>
-    <button id="clear-save-button" type="button">清除</button>
-    <span id="save-status" role="status" aria-live="polite">尚無存檔</span>
+  <!-- 全畫面演出層：受擊暗角、瀕死警示、電影黑邊與轉場 -->
+  <div class="fx" aria-hidden="true">
+    <div id="impact-flash"></div>
+    <div id="damage-vignette"></div>
+    <div id="danger-vignette"></div>
+    <div id="damage-direction"></div>
+    <div class="letterbox letterbox--top"></div>
+    <div class="letterbox letterbox--bottom"></div>
+    <div id="fade-curtain"></div>
   </div>
 
-  <div id="weapon-controls" aria-label="武器選擇">
-    <span>武器</span>
-    <button type="button" data-weapon="greatsword" class="active">大劍 1</button>
-    <button type="button" data-weapon="dualblades">雙劍 2</button>
+  <!-- 狩獵中 HUD -->
+  <div id="hud" class="hud">
+    <div class="hud__top">
+      <section class="vitals" id="vitals" aria-label="獵人狀態">
+        <button id="weapon-emblem" class="emblem" type="button" title="切換武器（1／2）" aria-label="切換武器，目前為大劍">
+          <svg class="icon emblem__icon"><use id="weapon-emblem-icon" href="#i-greatsword"/></svg>
+          <svg class="icon emblem__swap"><use href="#i-swap"/></svg>
+        </button>
+        <div class="vitals__body">
+          <div class="vitals__name"><span>獵人</span><i></i><span id="weapon-name">大劍</span></div>
+          <div class="gauge gauge--hp" id="hp-gauge" role="meter" aria-label="體力" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
+            <div class="gauge__ghost" id="hp-ghost"></div>
+            <div class="gauge__fill" id="hp-fill"></div>
+            <div class="gauge__ticks"></div>
+          </div>
+          <div class="gauge gauge--stamina" id="stamina-gauge" role="meter" aria-label="耐力" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
+            <div class="gauge__fill" id="stamina-fill"></div>
+          </div>
+          <div class="sharpness" id="sharpness" role="meter" aria-label="斬味" aria-valuemin="0" aria-valuemax="100" aria-valuenow="90">
+            <svg class="icon sharpness__icon"><use href="#i-edge"/></svg>
+            <div class="sharpness__track">
+              <div class="sharpness__bands"></div>
+              <div class="sharpness__spent" id="sharpness-spent"></div>
+            </div>
+            <span class="sharpness__label" id="sharpness-text">白</span>
+          </div>
+          <div class="buff" id="buff-focus" data-active="false" role="status">
+            <svg class="icon"><use href="#i-opening"/></svg><span>會心</span><i></i>
+          </div>
+        </div>
+        <output class="vitals__hp" id="hp-text" aria-hidden="true">100</output>
+      </section>
+
+      <section class="target" id="target" aria-label="狩獵目標">
+        <div class="target__head">
+          <h2 class="target__name" id="boss-name">棘冠甲獸</h2>
+        </div>
+        <div class="gauge gauge--boss" id="boss-gauge" role="meter" aria-label="目標體力" aria-valuemin="0" aria-valuemax="800" aria-valuenow="800">
+          <div class="gauge__ghost" id="boss-ghost"></div>
+          <div class="gauge__fill" id="boss-fill"></div>
+        </div>
+        <div class="target__foot">
+          <span class="part" id="part-head" data-broken="false" title="頭角">
+            <svg class="icon"><use href="#i-horn"/></svg><span class="part__label">頭角</span>
+          </span>
+          <span class="part" id="part-tail" data-broken="false" title="尾部">
+            <svg class="icon"><use href="#i-tail"/></svg><span class="part__label">尾部</span>
+          </span>
+          <span class="status" id="boss-status" data-state="none" role="status" aria-live="polite">
+            <svg class="icon"><use id="boss-status-icon" href="#i-rage"/></svg><span id="boss-status-text"></span>
+          </span>
+        </div>
+      </section>
+
+      <section class="quest" aria-label="任務資訊">
+        <div class="quest__row">
+          <div class="quest__clock" id="quest-clock" title="剩餘時間">
+            <svg class="icon"><use href="#i-hourglass"/></svg>
+            <span id="quest-time">15:00</span>
+          </div>
+          <button id="pause-button" class="icon-button" type="button" aria-label="開啟暫停選單（Esc）" title="暫停（Esc）">
+            <svg class="icon"><use href="#i-pause"/></svg>
+          </button>
+        </div>
+        <div class="quest__objective"><span class="quest__tag">討伐</span><span>棘冠甲獸</span></div>
+        <div class="minimap" id="minimap" aria-hidden="true">
+          <canvas id="minimap-canvas" width="240" height="240"></canvas>
+          <span class="minimap__north" id="minimap-north">N</span>
+        </div>
+      </section>
+    </div>
+
+    <div class="hud__feed" id="feed" role="log" aria-live="polite"></div>
+    <div class="callout" id="callout" role="status" aria-live="polite">
+      <span class="callout__eyebrow" id="callout-eyebrow"></span>
+      <strong class="callout__title" id="callout-title"></strong>
+      <span class="callout__sub" id="callout-sub"></span>
+    </div>
+
+    <div class="action-strip" aria-hidden="true">
+      <div class="combo" id="combo-gauge" data-step="0"><i></i><i></i><i></i></div>
+      <div class="charge" id="charge-gauge" data-level="0">
+        <span class="charge__label">蓄力</span>
+        <div class="charge__pips"><i><b></b></i><i><b></b></i><i><b></b></i></div>
+      </div>
+    </div>
+
+    <div class="hud__bottom">
+      <aside class="hints" id="hints" aria-label="操作提示">
+        <ul class="hints__list">
+          <li><span class="keys"><kbd class="keycap">W</kbd><kbd class="keycap">A</kbd><kbd class="keycap">S</kbd><kbd class="keycap">D</kbd></span><span>移動</span></li>
+          <li><span class="keys"><kbd class="keycap keycap--wide">Space</kbd></span><span>翻滾迴避</span></li>
+          <li><span class="keys"><kbd class="keycap">J</kbd><kbd class="keycap keycap--wide">左鍵</kbd></span><span>斬擊連段</span></li>
+          <li><span class="keys"><kbd class="keycap">K</kbd></span><span>按住蓄力・放開重斬</span></li>
+          <li><span class="keys"><kbd class="keycap">F</kbd></span><span>鎖定目標</span></li>
+          <li><span class="keys"><kbd class="keycap keycap--wide">右鍵</kbd></span><span>拖曳旋轉視角</span></li>
+        </ul>
+        <div class="hints__toggle"><kbd class="keycap">H</kbd><span id="hints-toggle-label">收合提示</span></div>
+      </aside>
+
+      <section class="items" aria-label="道具">
+        <button class="slot" id="slot-potion" type="button" data-item="potion" aria-label="使用回復藥（E）">
+          <svg class="slot__ring" viewBox="0 0 44 44"><circle cx="22" cy="22" r="20"/><circle class="slot__progress" id="slot-potion-progress" cx="22" cy="22" r="20" pathLength="100"/></svg>
+          <svg class="icon slot__icon"><use href="#i-potion"/></svg>
+          <span class="slot__count" id="potion-count">3</span>
+          <kbd class="keycap slot__key">E</kbd>
+          <span class="slot__name">回復藥</span>
+        </button>
+        <button class="slot" id="slot-whetstone" type="button" data-item="whetstone" aria-label="使用砥石（R）">
+          <svg class="slot__ring" viewBox="0 0 44 44"><circle cx="22" cy="22" r="20"/><circle class="slot__progress" id="slot-whetstone-progress" cx="22" cy="22" r="20" pathLength="100"/></svg>
+          <svg class="icon slot__icon"><use href="#i-whetstone"/></svg>
+          <kbd class="keycap slot__key">R</kbd>
+          <span class="slot__name">砥石</span>
+        </button>
+      </section>
+    </div>
+
+    <div id="lockon-reticle" class="reticle" aria-hidden="true"><i></i><i></i><i></i><i></i><b></b></div>
+    <div id="target-pointer" class="pointer" aria-hidden="true"><svg class="icon"><use href="#i-claw"/></svg></div>
+    <div id="threat-marker" class="threat" aria-hidden="true"><svg class="icon"><use href="#i-warning"/></svg></div>
+    <div id="damage-layer" aria-hidden="true"></div>
   </div>
 
+  <!-- 觸控操作：左側浮動搖桿、右側動作鍵 -->
   <div id="touch-controls" aria-label="觸控操作">
-    <div class="touch-dpad">
-      <button class="touch-btn" type="button" data-hold-key="w" aria-label="向前">▲</button>
-      <button class="touch-btn" type="button" data-hold-key="a" aria-label="向左">◀</button>
-      <button class="touch-btn" type="button" data-hold-key="s" aria-label="向後">▼</button>
-      <button class="touch-btn" type="button" data-hold-key="d" aria-label="向右">▶</button>
-    </div>
-    <div class="touch-actions">
-      <button class="touch-btn" type="button" data-action="light">攻擊</button>
-      <button class="touch-btn" type="button" data-action="dodge">翻滾</button>
-      <button class="touch-btn" type="button" data-action="charge">蓄力</button>
-      <button class="touch-btn" type="button" data-action="potion">回復</button>
-      <button class="touch-btn" type="button" data-action="sharpen">磨刀</button>
-      <button class="touch-btn" type="button" data-action="lock" aria-pressed="false">鎖定魔物</button>
+    <div id="touch-stick" class="stick" aria-hidden="true"><div class="stick__knob" id="touch-knob"></div></div>
+    <div class="pad">
+      <button class="pad__btn pad__btn--lock" type="button" data-action="lock" aria-pressed="false" aria-label="鎖定目標"><svg class="icon"><use href="#i-target"/></svg></button>
+      <button class="pad__btn pad__btn--charge" type="button" data-action="charge" aria-label="按住蓄力，放開重斬"><svg class="icon"><use href="#i-charge"/></svg></button>
+      <button class="pad__btn pad__btn--dodge" type="button" data-action="dodge" aria-label="翻滾迴避"><svg class="icon"><use href="#i-dodge"/></svg></button>
+      <button class="pad__btn pad__btn--attack" type="button" data-action="light" aria-label="斬擊"><svg class="icon"><use href="#i-slash"/></svg></button>
     </div>
   </div>
+
+  <!-- 載入畫面 -->
+  <div id="screen-loading" class="screen screen--loading is-open" role="status" aria-live="polite">
+    <div class="loading">
+      <div class="brand brand--compact">
+        <span class="brand__title">蒼林狩獵誌</span>
+        <span class="brand__sub">VERDANT HUNT</span>
+      </div>
+      <div class="loading__bar" role="progressbar" aria-label="載入進度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="loading-bar">
+        <div class="loading__fill" id="loading-fill"></div>
+      </div>
+      <div class="loading__status" id="loading-status">正在整備獵場…</div>
+      <p class="loading__tip"><span class="loading__tip-tag">狩獵筆記</span><span id="loading-tip"></span></p>
+    </div>
+  </div>
+
+  <!-- 標題畫面 -->
+  <div id="screen-title" class="screen screen--title">
+    <header class="brand">
+      <span class="brand__eyebrow">3D 狩獵動作原型</span>
+      <h1 class="brand__title">蒼林狩獵誌</h1>
+      <span class="brand__sub">VERDANT HUNT</span>
+    </header>
+    <nav class="menu" aria-label="主選單" data-menu>
+      <button class="menu__item" type="button" data-command="new-hunt">開始狩獵</button>
+      <button class="menu__item" type="button" data-command="continue" id="title-continue">繼續狩獵<small id="title-continue-note"></small></button>
+      <button class="menu__item" type="button" data-command="controls">操作說明</button>
+      <button class="menu__item" type="button" data-command="settings">設定</button>
+    </nav>
+    <footer class="title-footer">
+      <div class="record" id="title-record"></div>
+      <div class="legend"><kbd class="keycap">↑</kbd><kbd class="keycap">↓</kbd><span>選擇</span><kbd class="keycap keycap--wide">Enter</kbd><span>確認</span></div>
+    </footer>
+  </div>
+
+  <!-- 任務看板 -->
+  <div id="screen-quest" class="screen screen--quest">
+    <article class="sheet sheet--quest" role="dialog" aria-modal="true" aria-labelledby="quest-title">
+      <header class="sheet__header">
+        <span class="sheet__eyebrow">討伐任務<span class="stars" aria-label="難度三星">★★★</span></span>
+        <h2 class="sheet__title" id="quest-title">蒼林的棘冠</h2>
+      </header>
+      <dl class="facts">
+        <div><dt>目標</dt><dd>討伐　棘冠甲獸</dd></div>
+        <div><dt>獵場</dt><dd>蒼林・骸骨空地</dd></div>
+        <div><dt>時限</dt><dd>15 分鐘</dd></div>
+        <div><dt>失敗條件</dt><dd>體力耗盡／時間結束</dd></div>
+      </dl>
+      <p class="sheet__note">盤踞在蒼林深處的大型甲獸，會以衝撞與迴旋甩尾驅逐入侵者；負傷後將發出震耳咆哮並陷入狂暴。頭角與尾部可以破壞，切斷尾部能削弱甩尾的範圍。</p>
+      <div class="loadout" role="radiogroup" aria-label="攜帶武器">
+        <span class="loadout__legend">攜帶武器</span>
+        <button class="loadout__card" type="button" role="radio" data-weapon-choice="greatsword" aria-checked="true">
+          <svg class="icon"><use href="#i-greatsword"/></svg>
+          <span class="loadout__text"><strong>大劍</strong><span>一擊沉重，蓄力重斬的威力極高</span></span>
+          <span class="loadout__stats"><span>威力<i data-level="5"></i></span><span>速度<i data-level="2"></i></span></span>
+        </button>
+        <button class="loadout__card" type="button" role="radio" data-weapon-choice="dualblades" aria-checked="false">
+          <svg class="icon"><use href="#i-dualblades"/></svg>
+          <span class="loadout__text"><strong>雙劍</strong><span>出手迅速、耐力消耗低，適合貼身纏鬥</span></span>
+          <span class="loadout__stats"><span>威力<i data-level="3"></i></span><span>速度<i data-level="5"></i></span></span>
+        </button>
+      </div>
+      <footer class="sheet__actions">
+        <button class="btn btn--ghost" type="button" data-command="quest-back">返回</button>
+        <button class="btn btn--primary" type="button" data-command="depart">出發狩獵</button>
+      </footer>
+    </article>
+  </div>
+
+  <!-- 暫停選單 -->
+  <div id="screen-pause" class="screen screen--pause">
+    <div class="pause">
+      <header class="pause__header">
+        <span class="pause__eyebrow">任務進行中</span>
+        <h2 class="pause__title">暫停</h2>
+      </header>
+      <nav class="menu menu--pause" aria-label="暫停選單" data-menu>
+        <button class="menu__item" type="button" data-command="resume">繼續狩獵</button>
+        <button class="menu__item" type="button" data-command="controls">操作說明</button>
+        <button class="menu__item" type="button" data-command="settings">設定</button>
+        <button class="menu__item" type="button" data-command="save">儲存進度</button>
+        <button class="menu__item" type="button" data-command="load" id="pause-load">讀取進度</button>
+        <button class="menu__item menu__item--danger" type="button" data-command="abandon">放棄任務</button>
+      </nav>
+      <aside class="pause__status" aria-label="任務狀態">
+        <dl class="facts facts--dark">
+          <div><dt>任務</dt><dd>蒼林的棘冠</dd></div>
+          <div><dt>剩餘時間</dt><dd id="pause-time">15:00</dd></div>
+          <div><dt>武器</dt><dd id="pause-weapon">大劍</dd></div>
+          <div><dt>存檔</dt><dd id="save-status" role="status" aria-live="polite">尚無存檔</dd></div>
+        </dl>
+      </aside>
+    </div>
+  </div>
+
+  <!-- 任務結算 -->
+  <div id="screen-result" class="screen screen--result">
+    <div class="result" id="result" data-outcome="clear">
+      <div class="result__stamp">
+        <span class="result__stamp-sub" id="result-sub">QUEST COMPLETE</span>
+        <h2 class="result__stamp-title" id="result-title">任務達成</h2>
+      </div>
+      <article class="sheet sheet--result" role="dialog" aria-modal="true" aria-labelledby="result-title">
+        <div class="result__top">
+          <div class="result__quest">
+            <span class="sheet__eyebrow">討伐任務<span class="stars" aria-hidden="true">★★★</span></span>
+            <strong>蒼林的棘冠</strong>
+            <span class="result__reason" id="result-reason"></span>
+          </div>
+          <div class="seal" id="result-seal" aria-label="任務評價">
+            <span class="seal__label">評價</span>
+            <span class="seal__rank" id="result-rank">S</span>
+          </div>
+        </div>
+        <dl class="ledger" id="result-ledger"></dl>
+        <p class="result__record" id="result-record"></p>
+        <footer class="sheet__actions">
+          <button class="btn btn--ghost" type="button" data-command="to-title">返回標題</button>
+          <button class="btn btn--primary" type="button" data-command="retry">再次狩獵</button>
+        </footer>
+      </article>
+    </div>
+  </div>
+
+  <!-- 操作說明 -->
+  <div id="dialog-controls" class="dialog" role="dialog" aria-modal="true" aria-labelledby="controls-title">
+    <div class="panel">
+      <header class="panel__header">
+        <h2 class="panel__title" id="controls-title">操作說明</h2>
+        <button class="btn btn--ghost btn--small" type="button" data-command="close-dialog">返回<kbd class="keycap">Esc</kbd></button>
+      </header>
+      <div class="controls-grid">
+        <section>
+          <h3>鍵盤與滑鼠</h3>
+          <ul class="bindings">
+            <li><span class="keys"><kbd class="keycap">W</kbd><kbd class="keycap">A</kbd><kbd class="keycap">S</kbd><kbd class="keycap">D</kbd></span><span>依鏡頭方向移動</span></li>
+            <li><span class="keys"><kbd class="keycap keycap--wide">Space</kbd></span><span>翻滾迴避（有短暫無敵時間）</span></li>
+            <li><span class="keys"><kbd class="keycap">J</kbd><kbd class="keycap keycap--wide">左鍵</kbd></span><span>斬擊，連按可接續三段連斬</span></li>
+            <li><span class="keys"><kbd class="keycap">K</kbd></span><span>按住蓄力，放開施放重斬</span></li>
+            <li><span class="keys"><kbd class="keycap">E</kbd></span><span>飲用回復藥</span></li>
+            <li><span class="keys"><kbd class="keycap">R</kbd></span><span>使用砥石，回復斬味</span></li>
+            <li><span class="keys"><kbd class="keycap">1</kbd><kbd class="keycap">2</kbd></span><span>切換大劍／雙劍</span></li>
+            <li><span class="keys"><kbd class="keycap">F</kbd><kbd class="keycap keycap--wide">Tab</kbd></span><span>鎖定／解除鎖定目標</span></li>
+            <li><span class="keys"><kbd class="keycap keycap--wide">右鍵</kbd></span><span>拖曳旋轉視角；滾輪調整距離</span></li>
+            <li><span class="keys"><kbd class="keycap keycap--wide">Esc</kbd><kbd class="keycap">P</kbd></span><span>暫停選單</span></li>
+            <li><span class="keys"><kbd class="keycap">H</kbd></span><span>顯示／收合操作提示</span></li>
+          </ul>
+        </section>
+        <section>
+          <h3>觸控</h3>
+          <ul class="bindings bindings--icons">
+            <li><span class="keys"><span class="glyph glyph--stick"></span></span><span>在畫面左半按住拖曳：移動</span></li>
+            <li><span class="keys"><span class="glyph glyph--drag"></span></span><span>在畫面右半拖曳：旋轉視角</span></li>
+            <li><span class="keys"><svg class="icon"><use href="#i-slash"/></svg></span><span>斬擊連段</span></li>
+            <li><span class="keys"><svg class="icon"><use href="#i-charge"/></svg></span><span>按住蓄力，放開重斬</span></li>
+            <li><span class="keys"><svg class="icon"><use href="#i-dodge"/></svg></span><span>翻滾迴避</span></li>
+            <li><span class="keys"><svg class="icon"><use href="#i-target"/></svg></span><span>鎖定目標</span></li>
+          </ul>
+          <h3>狩獵要點</h3>
+          <ul class="notes">
+            <li>魔物出招前身體會閃爍，腳下會出現預警圈。</li>
+            <li>攻擊頭部能造成更高傷害；持續攻擊可使魔物倒地。</li>
+            <li>斬味下降會降低傷害，記得找空檔磨刀。</li>
+          </ul>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- 設定 -->
+  <div id="dialog-settings" class="dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div class="panel panel--narrow">
+      <header class="panel__header">
+        <h2 class="panel__title" id="settings-title">設定</h2>
+        <button class="btn btn--ghost btn--small" type="button" data-command="close-dialog">返回<kbd class="keycap">Esc</kbd></button>
+      </header>
+      <div class="settings">
+        <label class="setting">
+          <span class="setting__label">主音量</span>
+          <input type="range" min="0" max="100" step="5" data-setting="masterVolume" data-scale="100">
+          <output class="setting__value" data-output="masterVolume"></output>
+        </label>
+        <label class="setting">
+          <span class="setting__label">鏡頭靈敏度</span>
+          <input type="range" min="40" max="200" step="10" data-setting="cameraSensitivity" data-scale="100">
+          <output class="setting__value" data-output="cameraSensitivity"></output>
+        </label>
+        <label class="setting">
+          <span class="setting__label">鏡頭震動</span>
+          <input type="range" min="0" max="100" step="10" data-setting="cameraShake" data-scale="100">
+          <output class="setting__value" data-output="cameraShake"></output>
+        </label>
+        <label class="setting">
+          <span class="setting__label">介面大小</span>
+          <input type="range" min="80" max="120" step="5" data-setting="hudScale" data-scale="100">
+          <output class="setting__value" data-output="hudScale"></output>
+        </label>
+        <div class="setting">
+          <span class="setting__label" id="quality-label">畫質</span>
+          <div class="segmented" role="radiogroup" aria-labelledby="quality-label">
+            <button type="button" role="radio" data-setting-option="graphicsQuality" data-value="low">低</button>
+            <button type="button" role="radio" data-setting-option="graphicsQuality" data-value="medium">中</button>
+            <button type="button" role="radio" data-setting-option="graphicsQuality" data-value="high">高</button>
+          </div>
+        </div>
+        <label class="setting setting--toggle">
+          <span class="setting__label">傷害數字</span>
+          <input type="checkbox" class="switch" data-setting="showDamageNumbers">
+        </label>
+        <label class="setting setting--toggle">
+          <span class="setting__label">目標體力條</span>
+          <input type="checkbox" class="switch" data-setting="showTargetHealth">
+        </label>
+        <label class="setting setting--toggle">
+          <span class="setting__label">小地圖</span>
+          <input type="checkbox" class="switch" data-setting="showMinimap">
+        </label>
+        <label class="setting setting--toggle">
+          <span class="setting__label">操作提示</span>
+          <input type="checkbox" class="switch" data-setting="showControlHints">
+        </label>
+        <div class="setting setting--footer">
+          <span class="setting__label">存檔資料<small id="settings-save-note"></small></span>
+          <button class="btn btn--danger btn--small" type="button" data-command="clear-save">清除存檔</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 確認對話框 -->
+  <div id="dialog-confirm" class="dialog dialog--confirm" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-text">
+    <div class="panel panel--confirm">
+      <h2 class="panel__title" id="confirm-title"></h2>
+      <p class="panel__text" id="confirm-text"></p>
+      <footer class="sheet__actions">
+        <button class="btn btn--ghost" type="button" data-command="confirm-no">取消</button>
+        <button class="btn btn--danger" type="button" data-command="confirm-yes" id="confirm-yes">確定</button>
+      </footer>
+    </div>
+  </div>
+
+  <div id="runtime-error" role="alert" aria-live="assertive" hidden></div>
 
   <!-- 引入 Three.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js" integrity="sha384-fljlqkjWlmSFjkESkQvm77heIZpoWmXEOzlCA7kOpGUH+95Zk0yGfQieWM2q136E" crossorigin="anonymous"></script>
-  <script type="module">
-    import {
-      SHARPNESS_LEVELS,
-      calculateAttackDamage,
-      getChargeLevel,
-      getSharpnessLevel,
-      isWithinRange,
-      nextComboStep
-    } from './src/game-rules.mjs';
-    import {
-      createSaveState,
-      readSave,
-      readStats,
-      removeSave,
-      writeSave,
-      writeStats
-    } from './src/save-system.mjs';
-
-    const runtimeError = document.getElementById('runtime-error');
-    const impactFlash = document.getElementById('impact-flash');
-    const damageVignette = document.getElementById('damage-vignette');
-    const damageDirection = document.getElementById('damage-direction');
-    const assetLoading = document.getElementById('asset-loading');
-    const showRuntimeError = (message) => {
-      runtimeError.innerText = message;
-      runtimeError.hidden = false;
-    };
-    window.addEventListener('error', (event) => {
-      const message = event && event.error && event.error.message
-        ? event.error.message
-        : (event && event.message ? event.message : '未知執行錯誤');
-      showRuntimeError(`遊戲初始化失敗：${message}`);
-    });
-    window.addEventListener('unhandledrejection', (event) => {
-      const reason = event && event.reason && event.reason.message
-        ? event.reason.message
-        : String(event && event.reason ? event.reason : '未知非同步錯誤');
-      showRuntimeError(`遊戲載入失敗：${reason}`);
-    });
-
-    if (!window.THREE) {
-      showRuntimeError('無法載入 3D 引擎，請確認網路連線後重新整理頁面。');
-      throw new Error('Three.js failed to load');
-    }
-
-    const THREE = window.THREE;
-    const assetLoader = THREE.GLTFLoader ? new THREE.GLTFLoader() : null;
-    const assetVersion = 'blender-realism-forest-weapons-20261021-11';
-    let pendingAssetLoads = assetLoader ? 3 : 0;
-    const markAssetLoaded = (assetName) => {
-      pendingAssetLoads = Math.max(0, pendingAssetLoads - 1);
-      if (assetLoading) {
-        assetLoading.innerText = pendingAssetLoads > 0
-          ? `🌿 正在載入 Blender 資產…（${assetName} 完成）`
-          : '🌿 獵場準備完成';
-        if (pendingAssetLoads === 0) assetLoading.classList.add('hidden');
-      }
-    };
-    if (!assetLoader) {
-      showRuntimeError('GLTFLoader 未成功載入，角色與獵場將暫時使用程序模型。');
-      assetLoading?.classList.add('hidden');
-    }
-    /* ==============================================================
-       1. 程式化音效合成器 (Web Audio API Procedural Sound Synthesizer)
-       擷取自開源 Web 動作遊戲優勢：免外掛資源、零延遲、高回饋
-       ============================================================== */
-    class ProceduralAudio {
-      constructor() {
-        this.ctx = null;
-        this.unavailable = false;
-        this.outputNode = null;
-        this.ambientStarted = false;
-      }
-      init() {
-        if (!this.ctx && !this.unavailable) {
-          const AudioContext = window.AudioContext || window.webkitAudioContext;
-          if (!AudioContext) {
-            this.unavailable = true;
-            const tip = document.getElementById('audio-tip');
-            if (tip) tip.innerText = '目前瀏覽器不支援 Web Audio，遊戲仍可繼續。';
-            return;
-          }
-          try {
-            this.ctx = new AudioContext();
-            this.outputNode = this.ctx.createGain();
-            this.outputNode.gain.value = 0.72;
-            const compressor = this.ctx.createDynamicsCompressor();
-            compressor.threshold.value = -18;
-            compressor.knee.value = 18;
-            compressor.ratio.value = 5;
-            compressor.attack.value = 0.003;
-            compressor.release.value = 0.18;
-            this.outputNode.connect(compressor);
-            const forestReverb = this.ctx.createConvolver();
-            forestReverb.buffer = this.createImpulseResponse(0.42, 2.6);
-            const wetGain = this.ctx.createGain();
-            wetGain.gain.value = 0.16;
-            this.outputNode.connect(forestReverb);
-            forestReverb.connect(wetGain);
-            wetGain.connect(compressor);
-            compressor.connect(this.ctx.destination);
-            const tip = document.getElementById('audio-tip');
-            if (tip) tip.style.display = 'none';
-            this.startAmbient();
-          } catch (error) {
-            this.unavailable = true;
-            const tip = document.getElementById('audio-tip');
-            if (tip) {
-              tip.innerText = '音效初始化失敗，但仍可繼續遊戲。';
-              tip.style.display = 'block';
-            }
-            console.warn('Web Audio initialization failed', error);
-            return;
-          }
-        }
-        if (this.ctx && this.ctx.state === 'suspended') {
-          this.ctx.resume().catch(() => {
-            const tip = document.getElementById('audio-tip');
-            if (tip) {
-              tip.innerText = '瀏覽器拒絕啟用音效，遊戲仍可繼續。';
-              tip.style.display = 'block';
-            }
-          });
-        }
-        this.startAmbient();
-      }
-      output() {
-        return this.outputNode || this.ctx.destination;
-      }
-      createImpulseResponse(duration, decay) {
-        const length = Math.max(1, Math.floor(this.ctx.sampleRate * duration));
-        const impulse = this.ctx.createBuffer(2, length, this.ctx.sampleRate);
-        for (let channel = 0; channel < impulse.numberOfChannels; channel++) {
-          const data = impulse.getChannelData(channel);
-          for (let index = 0; index < length; index++) {
-            const envelope = Math.pow(1 - index / length, decay);
-            data[index] = (Math.random() * 2 - 1) * envelope * (channel === 0 ? 0.8 : 0.68);
-          }
-        }
-        return impulse;
-      }
-      noiseBuffer(duration) {
-        const length = Math.max(1, Math.floor(this.ctx.sampleRate * duration));
-        const buffer = this.ctx.createBuffer(1, length, this.ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < length; i++) {
-          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (length * 0.22));
-        }
-        return buffer;
-      }
-      startAmbient() {
-        if (!this.ctx || this.ambientStarted) return;
-        this.ambientStarted = true;
-        const now = this.ctx.currentTime;
-        const ambientGain = this.ctx.createGain();
-        ambientGain.gain.value = 0.026;
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.value = 420;
-        ambientGain.connect(filter);
-        filter.connect(this.output());
-
-        const drone = this.ctx.createOscillator();
-        drone.type = 'sine';
-        drone.frequency.value = 54;
-        const droneGain = this.ctx.createGain();
-        droneGain.gain.value = 0.72;
-        drone.connect(droneGain);
-        droneGain.connect(ambientGain);
-        drone.start(now);
-
-        const undertone = this.ctx.createOscillator();
-        undertone.type = 'triangle';
-        undertone.frequency.value = 81;
-        const undertoneGain = this.ctx.createGain();
-        undertoneGain.gain.value = 0.18;
-        undertone.connect(undertoneGain);
-        undertoneGain.connect(ambientGain);
-        undertone.start(now);
-
-        this.ambientNodes = [drone, undertone, ambientGain, filter];
-      }
-      playFootstep(heavy = false) {
-        if (!this.ctx) return;
-        const now = this.ctx.currentTime;
-        const source = this.ctx.createBufferSource();
-        source.buffer = this.noiseBuffer(0.07);
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.value = heavy ? 180 : 240;
-        const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(heavy ? 0.08 : 0.045, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
-        source.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.output());
-        source.start(now);
-      }
-      playSlash(heavy = false) {
-        if (!this.ctx) return;
-        const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(heavy ? 280 : 420, now);
-        osc.frequency.exponentialRampToValueAtTime(60, now + (heavy ? 0.28 : 0.16));
-
-        gain.gain.setValueAtTime(0.3, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + (heavy ? 0.28 : 0.16));
-
-        osc.connect(gain);
-        gain.connect(this.output());
-        osc.start(now);
-        osc.stop(now + (heavy ? 0.3 : 0.18));
-
-        const air = this.ctx.createBufferSource();
-        air.buffer = this.noiseBuffer(heavy ? 0.22 : 0.12);
-        const airFilter = this.ctx.createBiquadFilter();
-        airFilter.type = 'bandpass';
-        airFilter.frequency.setValueAtTime(heavy ? 900 : 1400, now);
-        airFilter.frequency.exponentialRampToValueAtTime(260, now + (heavy ? 0.22 : 0.12));
-        airFilter.Q.value = 0.7;
-        const airGain = this.ctx.createGain();
-        airGain.gain.setValueAtTime(heavy ? 0.22 : 0.12, now);
-        airGain.gain.exponentialRampToValueAtTime(0.001, now + (heavy ? 0.22 : 0.12));
-        air.connect(airFilter);
-        airFilter.connect(airGain);
-        airGain.connect(this.output());
-        air.start(now);
-      }
-      playHit(heavy = false) {
-        if (!this.ctx) return;
-        const now = this.ctx.currentTime;
-        // 打擊衝擊雜音
-        const buffer = this.noiseBuffer(heavy ? 0.18 : 0.09);
-        const whiteNoise = this.ctx.createBufferSource();
-        whiteNoise.buffer = buffer;
-
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(heavy ? 600 : 1200, now);
-
-        const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(heavy ? 0.8 : 0.45, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + (heavy ? 0.2 : 0.1));
-
-        whiteNoise.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.output());
-        whiteNoise.start(now);
-
-        // 低頻重音衝擊
-        const subOsc = this.ctx.createOscillator();
-        const subGain = this.ctx.createGain();
-        subOsc.type = 'triangle';
-        subOsc.frequency.setValueAtTime(heavy ? 120 : 180, now);
-        subOsc.frequency.exponentialRampToValueAtTime(30, now + 0.15);
-        subGain.gain.setValueAtTime(heavy ? 0.6 : 0.3, now);
-        subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-        subOsc.connect(subGain);
-        subGain.connect(this.output());
-        subOsc.start(now);
-        subOsc.stop(now + 0.16);
-
-        const metal = this.ctx.createOscillator();
-        const metalGain = this.ctx.createGain();
-        metal.type = 'triangle';
-        metal.frequency.setValueAtTime(heavy ? 820 : 1160, now);
-        metal.frequency.exponentialRampToValueAtTime(240, now + 0.09);
-        metalGain.gain.setValueAtTime(heavy ? 0.18 : 0.1, now);
-        metalGain.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
-        metal.connect(metalGain);
-        metalGain.connect(this.output());
-        metal.start(now);
-        metal.stop(now + 0.12);
-      }
-      playRoar() {
-        if (!this.ctx) return;
-        const now = this.ctx.currentTime;
-        // 龍吼：失真調頻鋸齒波
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(140, now);
-        osc.frequency.linearRampToValueAtTime(260, now + 0.35);
-        osc.frequency.exponentialRampToValueAtTime(80, now + 1.2);
-
-        gain.gain.setValueAtTime(0.5, now);
-        gain.gain.linearRampToValueAtTime(0.7, now + 0.4);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 1.3);
-
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'bandpass';
-        filter.frequency.setValueAtTime(450, now);
-        filter.Q.value = 2.0;
-
-        osc.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.output());
-        osc.start(now);
-        osc.stop(now + 1.3);
-
-        const sub = this.ctx.createOscillator();
-        const subGain = this.ctx.createGain();
-        sub.type = 'triangle';
-        sub.frequency.setValueAtTime(54, now);
-        sub.frequency.exponentialRampToValueAtTime(28, now + 1.4);
-        subGain.gain.setValueAtTime(0.42, now);
-        subGain.gain.exponentialRampToValueAtTime(0.001, now + 1.4);
-        sub.connect(subGain);
-        subGain.connect(this.output());
-        sub.start(now);
-        sub.stop(now + 1.45);
-
-        const breath = this.ctx.createBufferSource();
-        breath.buffer = this.noiseBuffer(1.25);
-        const breathFilter = this.ctx.createBiquadFilter();
-        breathFilter.type = 'lowpass';
-        breathFilter.frequency.setValueAtTime(620, now);
-        breathFilter.frequency.linearRampToValueAtTime(180, now + 1.15);
-        const breathGain = this.ctx.createGain();
-        breathGain.gain.setValueAtTime(0.16, now);
-        breathGain.gain.exponentialRampToValueAtTime(0.001, now + 1.25);
-        breath.connect(breathFilter);
-        breathFilter.connect(breathGain);
-        breathGain.connect(this.output());
-        breath.start(now);
-      }
-      playWingWhoosh(enraged = false) {
-        if (!this.ctx) return;
-        const now = this.ctx.currentTime;
-        const source = this.ctx.createBufferSource();
-        source.buffer = this.noiseBuffer(enraged ? 0.32 : 0.24);
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'bandpass';
-        filter.frequency.setValueAtTime(enraged ? 420 : 300, now);
-        filter.frequency.exponentialRampToValueAtTime(enraged ? 1200 : 850, now + 0.14);
-        filter.Q.value = 0.55;
-        const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(0.001, now);
-        gain.gain.exponentialRampToValueAtTime(enraged ? 0.24 : 0.14, now + 0.06);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + (enraged ? 0.3 : 0.22));
-        source.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.output());
-        source.start(now);
-      }
-      playEnragePulse() {
-        if (!this.ctx) return;
-        const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(96, now);
-        osc.frequency.exponentialRampToValueAtTime(260, now + 0.32);
-        gain.gain.setValueAtTime(0.001, now);
-        gain.gain.exponentialRampToValueAtTime(0.24, now + 0.05);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
-        osc.connect(gain);
-        gain.connect(this.output());
-        osc.start(now);
-        osc.stop(now + 0.45);
-      }
-      playTelegraph(kind = 'charge', enraged = false) {
-        if (!this.ctx) return;
-        const now = this.ctx.currentTime;
-        const isSpin = kind === 'spin';
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        const filter = this.ctx.createBiquadFilter();
-        osc.type = isSpin ? 'triangle' : 'sine';
-        osc.frequency.setValueAtTime(isSpin ? 180 : 92, now);
-        osc.frequency.exponentialRampToValueAtTime(isSpin ? 520 : 180, now + (isSpin ? 0.26 : 0.42));
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(enraged ? 980 : 720, now);
-        filter.frequency.linearRampToValueAtTime(enraged ? 1500 : 1100, now + 0.4);
-        gain.gain.setValueAtTime(0.001, now);
-        gain.gain.exponentialRampToValueAtTime(enraged ? 0.2 : 0.13, now + 0.08);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + (isSpin ? 0.34 : 0.5));
-        osc.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.output());
-        osc.start(now);
-        osc.stop(now + (isSpin ? 0.36 : 0.52));
-      }
-      playPartBreak() {
-        if (!this.ctx) return;
-        const now = this.ctx.currentTime;
-        const metal = this.ctx.createOscillator();
-        const metalGain = this.ctx.createGain();
-        metal.type = 'triangle';
-        metal.frequency.setValueAtTime(1180, now);
-        metal.frequency.exponentialRampToValueAtTime(180, now + 0.34);
-        metalGain.gain.setValueAtTime(0.22, now);
-        metalGain.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
-        metal.connect(metalGain);
-        metalGain.connect(this.output());
-        metal.start(now);
-        metal.stop(now + 0.38);
-
-        const crack = this.ctx.createBufferSource();
-        crack.buffer = this.noiseBuffer(0.18);
-        const crackFilter = this.ctx.createBiquadFilter();
-        crackFilter.type = 'highpass';
-        crackFilter.frequency.setValueAtTime(850, now);
-        crackFilter.frequency.exponentialRampToValueAtTime(260, now + 0.16);
-        const crackGain = this.ctx.createGain();
-        crackGain.gain.setValueAtTime(0.16, now);
-        crackGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-        crack.connect(crackFilter);
-        crackFilter.connect(crackGain);
-        crackGain.connect(this.output());
-        crack.start(now);
-      }
-      playRoll() {
-        if (!this.ctx) return;
-        const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(120, now);
-        osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
-        gain.gain.setValueAtTime(0.2, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-        osc.connect(gain);
-        gain.connect(this.output());
-        osc.start(now);
-        osc.stop(now + 0.22);
-      }
-      playHeal() {
-        if (!this.ctx) return;
-        const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(320, now);
-        osc.frequency.exponentialRampToValueAtTime(640, now + 0.35);
-        gain.gain.setValueAtTime(0.25, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
-        osc.connect(gain);
-        gain.connect(this.output());
-        osc.start(now);
-        osc.stop(now + 0.42);
-      }
-      playSharpen() {
-        if (!this.ctx) return;
-        const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(1400, now);
-        osc.frequency.exponentialRampToValueAtTime(2600, now + 0.25);
-        gain.gain.setValueAtTime(0.3, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
-        osc.connect(gain);
-        gain.connect(this.output());
-        osc.start(now);
-        osc.stop(now + 0.26);
-      }
-    }
-
-    const audio = new ProceduralAudio();
-    window.addEventListener('pointerdown', () => audio.init(), { once: true });
-    window.addEventListener('keydown', () => audio.init(), { once: true });
-
-    /* ==============================================================
-       2. 粒子系統 (Particles System: 火花、刀光殘影、咆哮震波)
-       ============================================================== */
-    class ParticleManager {
-      constructor(scene) {
-        this.scene = scene;
-        this.particles = [];
-        this.shockwaves = [];
-        this.particlePool = [];
-
-        // 預設火花材質
-        this.sparkGeo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
-        this.sparkMatYellow = new THREE.MeshBasicMaterial({ color: 0xfff200 });
-        this.sparkMatRed = new THREE.MeshBasicMaterial({ color: 0xff3838 });
-      }
-
-      spawnHitSparks(position, count = 16, isHeavy = false) {
-        for (let i = 0; i < count; i++) {
-          const mesh = this.particlePool.pop() || new THREE.Mesh(this.sparkGeo, this.sparkMatYellow);
-          mesh.material = isHeavy ? this.sparkMatRed : this.sparkMatYellow;
-          mesh.visible = true;
-          mesh.position.copy(position);
-          this.scene.add(mesh);
-
-          const speed = (isHeavy ? 14 : 9) * (0.6 + Math.random() * 0.8);
-          const theta = Math.random() * Math.PI * 2;
-          const phi = (Math.random() - 0.2) * Math.PI;
-
-          const velocity = new THREE.Vector3(
-            Math.cos(theta) * Math.cos(phi) * speed,
-            Math.sin(phi) * speed + 3.0,
-            Math.sin(theta) * Math.cos(phi) * speed
-          );
-
-          this.particles.push({
-            mesh,
-            vel: velocity,
-            life: 0.35 + Math.random() * 0.2,
-            maxLife: 0.5
-          });
-        }
-      }
-
-      spawnShockwave(position, maxRadius = 22, color = 0xffffff) {
-        const ringGeo = new THREE.RingGeometry(0.5, 1.2, 32);
-        const ringMat = new THREE.MeshBasicMaterial({
-          color: color,
-          side: THREE.DoubleSide,
-          transparent: true,
-          opacity: 0.85
-        });
-        const mesh = new THREE.Mesh(ringGeo, ringMat);
-        mesh.rotation.x = -Math.PI / 2;
-        mesh.position.copy(position);
-        mesh.position.y = 0.2;
-        this.scene.add(mesh);
-
-        this.shockwaves.push({
-          mesh,
-          radius: 0.5,
-          maxRadius,
-          opacity: 0.85
-        });
-      }
-
-      update(dt) {
-        // 更新火花
-        for (let i = this.particles.length - 1; i >= 0; i--) {
-          const p = this.particles[i];
-          p.life -= dt;
-          if (p.life <= 0) {
-            this.scene.remove(p.mesh);
-            p.mesh.visible = false;
-            this.particlePool.push(p.mesh);
-            this.particles.splice(i, 1);
-            continue;
-          }
-          p.vel.y -= 25 * dt; // 重力
-          p.mesh.position.addScaledVector(p.vel, dt);
-          const scale = Math.max(0.01, p.life / p.maxLife);
-          p.mesh.scale.set(scale, scale, scale);
-        }
-
-        // 更新咆哮衝擊波
-        for (let i = this.shockwaves.length - 1; i >= 0; i--) {
-          const sw = this.shockwaves[i];
-          sw.radius += 36 * dt;
-          sw.opacity -= 1.4 * dt;
-          if (sw.opacity <= 0 || sw.radius >= sw.maxRadius) {
-            this.scene.remove(sw.mesh);
-            sw.mesh.geometry.dispose();
-            sw.mesh.material.dispose();
-            this.shockwaves.splice(i, 1);
-            continue;
-          }
-          sw.mesh.scale.set(sw.radius, sw.radius, sw.radius);
-          sw.mesh.material.opacity = Math.max(0, sw.opacity);
-        }
-      }
-    }
-
-    /* ==============================================================
-       3. 核心 3D 場景初始化 (Scene, Camera, Lighting, Shadows)
-       ============================================================== */
-    const container = document.getElementById('canvas-container');
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x18251f);
-    scene.fog = new THREE.Fog(0x18251f, 24, 105);
-
-    const camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 500);
-    let renderer;
-    try {
-      renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-    } catch (error) {
-      showRuntimeError('目前瀏覽器或裝置不支援 WebGL，無法啟動 3D 遊戲。');
-      throw error;
-    }
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, window.innerWidth < 900 ? 1.25 : 1.75));
-    renderer.outputEncoding = THREE.sRGBEncoding;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 0.9;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    container.appendChild(renderer.domElement);
-
-    const ambientLight = new THREE.AmbientLight(0xdfe6e9, 0.4);
-    scene.add(ambientLight);
-    const hemisphereLight = new THREE.HemisphereLight(0x9cbfa8, 0x21170f, 0.58);
-    scene.add(hemisphereLight);
-
-    const sunLight = new THREE.DirectionalLight(0xfffae6, 1.2);
-    sunLight.position.set(45, 65, 35);
-    sunLight.castShadow = true;
-    sunLight.shadow.mapSize.width = 2048;
-    sunLight.shadow.mapSize.height = 2048;
-    sunLight.shadow.camera.near = 1;
-    sunLight.shadow.camera.far = 180;
-    const shadowDist = 65;
-    sunLight.shadow.camera.left = -shadowDist;
-    sunLight.shadow.camera.right = shadowDist;
-    sunLight.shadow.camera.top = shadowDist;
-    sunLight.shadow.camera.bottom = -shadowDist;
-    sunLight.shadow.bias = -0.0005;
-    scene.add(sunLight);
-
-    const rimLight = new THREE.DirectionalLight(0x7eabc5, 0.34);
-    rimLight.position.set(-40, 22, -55);
-    scene.add(rimLight);
-
-    // 自然獵場地表
-    const groundGeo = new THREE.PlaneGeometry(150, 150);
-    const groundMat = new THREE.MeshStandardMaterial({
-      color: 0x26382c,
-      roughness: 0.85,
-      metalness: 0.02
-    });
-    const ground = new THREE.Mesh(groundGeo, groundMat);
-    ground.rotation.x = -Math.PI / 2;
-    ground.receiveShadow = true;
-    scene.add(ground);
-
-    const clearingMat = new THREE.MeshStandardMaterial({
-      color: 0x34472f,
-      roughness: 1.0,
-      transparent: true,
-      opacity: 0.3,
-      depthWrite: false
-    });
-    const clearing = new THREE.Mesh(new THREE.CircleGeometry(31, 64), clearingMat);
-    clearing.rotation.x = -Math.PI / 2;
-    clearing.position.y = 0.025;
-    scene.add(clearing);
-
-    const foliageGroup = new THREE.Group();
-    scene.add(foliageGroup);
-    const grassMat = new THREE.MeshStandardMaterial({ color: 0x5f7d42, roughness: 0.95 });
-    const mossMat = new THREE.MeshStandardMaterial({ color: 0x769653, roughness: 1.0 });
-    for (let i = 0; i < 58; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const distance = 9 + Math.random() * 25;
-      const height = 0.35 + Math.random() * 0.85;
-      const grass = new THREE.Mesh(new THREE.ConeGeometry(0.16 + Math.random() * 0.12, height, 4), grassMat);
-      grass.position.set(Math.cos(angle) * distance, height / 2, Math.sin(angle) * distance);
-      grass.rotation.y = Math.random() * Math.PI;
-      grass.castShadow = true;
-      foliageGroup.add(grass);
-    }
-    for (let i = 0; i < 18; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const distance = 5 + Math.random() * 28;
-      const patch = new THREE.Mesh(new THREE.CircleGeometry(0.5 + Math.random() * 0.7, 7), mossMat);
-      patch.rotation.x = -Math.PI / 2;
-      patch.position.set(Math.cos(angle) * distance, 0.035, Math.sin(angle) * distance);
-      foliageGroup.add(patch);
-    }
-
-    const boneMat = new THREE.MeshStandardMaterial({ color: 0x8c7046, roughness: 0.6 });
-    const boneSite = new THREE.Group();
-    boneSite.position.set(-17, 0, -8);
-    for (let i = 0; i < 5; i++) {
-      const rib = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.24, 3.8 + i * 0.2, 6), boneMat);
-      rib.position.set((i - 2) * 0.9, 1.05 + Math.abs(i - 2) * 0.12, 0);
-      rib.rotation.z = (i - 2) * 0.22;
-      rib.rotation.x = Math.PI / 2;
-      rib.castShadow = true;
-      boneSite.add(rib);
-    }
-    const skull = new THREE.Mesh(new THREE.IcosahedronGeometry(1.45, 1), boneMat);
-    skull.position.set(0, 1.35, 1.8);
-    skull.scale.set(1.2, 0.82, 1.45);
-    skull.castShadow = true;
-    boneSite.add(skull);
-    scene.add(boneSite);
-
-    // 邊界巨石柱環境裝飾
-    const rockMat = new THREE.MeshStandardMaterial({ color: 0x4b5866, roughness: 0.9 });
-    const boundaryRocksGroup = new THREE.Group();
-    scene.add(boundaryRocksGroup);
-    for (let i = 0; i < 22; i++) {
-      const radius = 1.6 + Math.random() * 2.2;
-      const height = 4 + Math.random() * 8;
-      const rock = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.6, radius, height, 7), rockMat);
-      const angle = (i / 22) * Math.PI * 2;
-      const dist = 55 + Math.random() * 12;
-      rock.position.set(Math.cos(angle) * dist, height / 2, Math.sin(angle) * dist);
-      rock.castShadow = true;
-      rock.receiveShadow = true;
-      boundaryRocksGroup.add(rock);
-    }
-
-    const particleSystem = new ParticleManager(scene);
-
-    /* ==============================================================
-       4. 獵人 (Hunter) 模型構建與動畫裝配
-       ============================================================== */
-    const hunterGroup = new THREE.Group();
-    scene.add(hunterGroup);
-
-    // 獵人身體
-    const armorMat = new THREE.MeshStandardMaterial({ color: 0x2c3e50, roughness: 0.4, metalness: 0.3 });
-    let hunterBody = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.8, 0.9), armorMat);
-    hunterBody.position.y = 0.9;
-    hunterBody.castShadow = true;
-    hunterGroup.add(hunterBody);
-
-    // 獵人頭部 & 頭盔
-    const helmetMat = new THREE.MeshStandardMaterial({ color: 0x7f8c8d, metalness: 0.6, roughness: 0.3 });
-    const hunterHead = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.85, 0.85), helmetMat);
-    hunterHead.position.y = 2.25;
-    hunterHead.castShadow = true;
-    hunterGroup.add(hunterHead);
-
-    // 大劍關節手部 (Weapon Pivot)
-    let weaponPivot = new THREE.Group();
-    weaponPivot.position.set(0.65, 1.35, 0);
-    hunterGroup.add(weaponPivot);
-
-    const swordGroup = new THREE.Group();
-    const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.9), new THREE.MeshStandardMaterial({ color: 0x8e44ad }));
-    const guard = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.15, 0.4), new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.8, roughness: 0.2 }));
-    guard.position.y = 0.45;
-
-    const bladeMat = new THREE.MeshStandardMaterial({ color: 0xdfe6e9, metalness: 0.85, roughness: 0.2 });
-    let blade = new THREE.Mesh(new THREE.BoxGeometry(0.4, 3.8, 0.14), bladeMat);
-    blade.position.y = 2.35;
-    blade.castShadow = true;
-
-    swordGroup.add(hilt, guard, blade);
-    swordGroup.rotation.x = Math.PI / 4.5;
-    weaponPivot.add(swordGroup);
-
-    // 大劍與雙劍揮擊拖影：用刀尖的歷史位置形成短暫的光帶，增加速度與重量感。
-    const bladeTrailLength = 12;
-    const createBladeTrailState = () => {
-      const positions = new Float32Array(bladeTrailLength * 3);
-      const history = Array.from({ length: bladeTrailLength }, () => new THREE.Vector3());
-      const geometry = new THREE.BufferGeometry();
-      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-      const material = new THREE.LineBasicMaterial({
-        color: 0xcaf7ff,
-        transparent: true,
-        opacity: 0,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false
-      });
-      const line = new THREE.Line(geometry, material);
-      line.frustumCulled = false;
-      scene.add(line);
-      return {
-        positions,
-        history,
-        geometry,
-        material,
-        line,
-        tip: new THREE.Vector3(),
-        active: false
-      };
-    };
-    const primaryBladeTrail = createBladeTrailState();
-    const secondaryBladeTrail = createBladeTrailState();
-
-    hunterGroup.position.set(0, 0, 22);
-
-    /* ==============================================================
-       5. 魔物 (Tigrex-Rex) 模型構建 (支援斷尾、斷角部位破壞)
-       ============================================================== */
-    const monsterGroup = new THREE.Group();
-    scene.add(monsterGroup);
-
-    const mSkinMat = new THREE.MeshStandardMaterial({ color: 0x962d22, roughness: 0.55 });
-    const monsterMaterials = new Set([mSkinMat]);
-
-    // 主身軀
-    const mBody = new THREE.Mesh(new THREE.BoxGeometry(4.0, 3.0, 7.0), mSkinMat);
-    mBody.position.y = 2.5;
-    mBody.castShadow = true;
-    monsterGroup.add(mBody);
-
-    // 頭部群組 (供破壞判定)
-    let headGroup = new THREE.Group();
-    headGroup.position.set(0, 3.0, 4.3);
-    const mHeadMesh = new THREE.Mesh(new THREE.BoxGeometry(2.8, 2.4, 3.0), mSkinMat);
-    mHeadMesh.castShadow = true;
-    headGroup.add(mHeadMesh);
-
-    // 雙角
-    const hornMat = new THREE.MeshStandardMaterial({ color: 0xf1c40f, roughness: 0.3 });
-    let hornLeft = new THREE.Mesh(new THREE.ConeGeometry(0.38, 2.0, 6), hornMat);
-    hornLeft.position.set(1.2, 1.2, 0.3);
-    hornLeft.rotation.x = Math.PI / 3.8;
-    hornLeft.castShadow = true;
-    let hornRight = hornLeft.clone();
-    hornRight.position.x = -1.2;
-    headGroup.add(hornLeft, hornRight);
-    monsterGroup.add(headGroup);
-
-    // 雙翼 / 前肢
-    const wingMat = new THREE.MeshStandardMaterial({ color: 0xd35400, roughness: 0.7 });
-    const mWings = new THREE.Mesh(new THREE.BoxGeometry(9.6, 0.5, 3.0), wingMat);
-    mWings.position.set(0, 2.7, 1.3);
-    mWings.castShadow = true;
-    monsterGroup.add(mWings);
-
-    // 尾部群組 (供斷尾部位破壞)
-    let tailGroup = new THREE.Group();
-    tailGroup.position.set(0, 2.1, -5.5);
-    const mTailMesh = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.3, 5.8), mSkinMat);
-    mTailMesh.castShadow = true;
-    tailGroup.add(mTailMesh);
-    monsterGroup.add(tailGroup);
-
-    // 怒氣眼睛紅光
-    const eyeLightL = new THREE.PointLight(0xff0000, 0, 6);
-    eyeLightL.position.set(0.9, 0.4, 1.6);
-    const eyeLightR = eyeLightL.clone();
-    eyeLightR.position.x = -0.9;
-    headGroup.add(eyeLightL, eyeLightR);
-
-    monsterGroup.position.set(0, 0, -12);
-
-    const proceduralHunterBody = hunterBody;
-    const proceduralHunterHead = hunterHead;
-    const proceduralHunterWeaponPivot = weaponPivot;
-    const proceduralHunterSword = swordGroup;
-    const proceduralMonsterBody = mBody;
-    const proceduralMonsterHead = headGroup;
-    const proceduralMonsterTail = tailGroup;
-    const proceduralMonsterWings = mWings;
-    let hunterVisual = null;
-    let monsterVisual = null;
-    let environmentVisual = null;
-    let hunterMixer = null;
-    let monsterMixer = null;
-    let alternateWeaponPivot = null;
-    let weaponMode = 'greatsword';
-    const weaponProfiles = {
-      greatsword: {
-        label: '大劍',
-        lightCost: 12,
-        chargeCost: 30,
-        lightDuration: 0.48,
-        heavyDuration: 0.65,
-        lightDamageMin: 32,
-        lightDamageMax: 44,
-        heavyDamageMin: 85,
-        heavyDamageMax: 110,
-        hitRange: 6.8
-      },
-      dualblades: {
-        label: '雙劍',
-        lightCost: 8,
-        chargeCost: 18,
-        lightDuration: 0.3,
-        heavyDuration: 0.52,
-        lightDamageMin: 18,
-        lightDamageMax: 26,
-        heavyDamageMin: 52,
-        heavyDamageMax: 68,
-        hitRange: 6.2
-      }
-    };
-    const hunterRig = {
-      chest: null,
-      head: null,
-      weapon: null,
-      blade: null,
-      dualBlades: [],
-      dualHands: [],
-      activeBlades: [blade],
-      legs: [],
-      shoulders: []
-    };
-    const monsterRig = {
-      body: null,
-      head: null,
-      wings: [],
-      tail: null,
-      eyes: []
-    };
-
-    const auraRings = [0, 1, 2].map((index) => {
-      const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(3.0 + index * 0.85, 0.045 + index * 0.012, 8, 64),
-        new THREE.MeshBasicMaterial({
-          color: index === 1 ? 0xd66bff : 0x7c4dff,
-          transparent: true,
-          opacity: 0,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false
-        })
-      );
-      ring.rotation.x = Math.PI / 2;
-      ring.position.y = 0.75 + index * 1.7;
-      ring.rotation.z = index * 0.65;
-      monsterGroup.add(ring);
-      return ring;
-    });
-
-    const monsterWarningRing = new THREE.Mesh(
-      new THREE.RingGeometry(3.7, 4.05, 64),
-      new THREE.MeshBasicMaterial({
-        color: 0xff5b5b,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false
-      })
-    );
-    monsterWarningRing.rotation.x = -Math.PI / 2;
-    monsterWarningRing.position.y = 0.08;
-    monsterGroup.add(monsterWarningRing);
-
-    const hideMeshes = (object) => {
-      object.traverse((child) => {
-        if (child.isMesh) child.visible = false;
-      });
-    };
-
-    const prepareLoadedModel = (model, trackMaterials = false) => {
-      const createRuntimeMaterial = (source) => {
-        const material = (source && typeof source.clone === 'function' && source.isMeshStandardMaterial)
-          ? source.clone()
-          : new THREE.MeshStandardMaterial({
-              color: source && source.color ? source.color.clone() : 0xffffff,
-              roughness: source && Number.isFinite(source.roughness) ? source.roughness : 0.6,
-              metalness: source && Number.isFinite(source.metalness) ? source.metalness : 0,
-              map: source && source.map ? source.map : null,
-              normalMap: source && source.normalMap ? source.normalMap : null,
-              roughnessMap: source && source.roughnessMap ? source.roughnessMap : null,
-              metalnessMap: source && source.metalnessMap ? source.metalnessMap : null,
-              emissiveMap: source && source.emissiveMap ? source.emissiveMap : null,
-              emissive: source && source.emissive ? source.emissive.clone() : new THREE.Color(0x000000),
-              emissiveIntensity: source && Number.isFinite(source.emissiveIntensity) ? source.emissiveIntensity : 1,
-              transparent: Boolean(source && source.transparent),
-              opacity: source && Number.isFinite(source.opacity) ? source.opacity : 1,
-              alphaTest: source && Number.isFinite(source.alphaTest) ? source.alphaTest : 0,
-              side: source && source.side ? source.side : THREE.FrontSide
-            });
-        if (source && source.normalScale && material.normalScale) {
-          material.normalScale.copy(source.normalScale);
-        }
-        material.userData = {
-          ...material.userData,
-          baseEmissive: material.emissive ? material.emissive.clone() : new THREE.Color(0x000000),
-          baseEmissiveIntensity: Number.isFinite(material.emissiveIntensity) ? material.emissiveIntensity : 1
-        };
-        return material;
-      };
-
-      model.traverse((child) => {
-        if (!child.isMesh) return;
-        child.castShadow = true;
-        child.receiveShadow = true;
-        if (child.material) {
-          child.material = Array.isArray(child.material)
-            ? child.material.map(createRuntimeMaterial)
-            : createRuntimeMaterial(child.material);
-          if (trackMaterials) {
-            const materials = Array.isArray(child.material) ? child.material : [child.material];
-            materials.forEach((material) => monsterMaterials.add(material));
-          }
-        }
-      });
-      return model;
-    };
-
-    const loadVisualAssets = () => {
-      if (!assetLoader) return;
-
-      assetLoader.load(`./assets/models/hunter.glb?v=${assetVersion}`, (gltf) => {
-        const model = prepareLoadedModel(gltf.scene);
-        model.name = 'hunterVisual';
-        hunterVisual = model;
-        if (gltf.animations && gltf.animations.length > 0) {
-          hunterMixer = new THREE.AnimationMixer(model);
-          gltf.animations.forEach((clip) => {
-            hunterMixer.clipAction(clip).setLoop(THREE.LoopRepeat, Infinity).play();
-          });
-        }
-        hunterGroup.add(model);
-        hideMeshes(proceduralHunterBody);
-        hideMeshes(proceduralHunterHead);
-        proceduralHunterWeaponPivot.visible = false;
-        proceduralHunterSword.visible = false;
-        hunterBody = model.getObjectByName('chest') || hunterBody;
-        blade = model.getObjectByName('weapon_blade') || blade;
-        weaponPivot = model.getObjectByName('weaponPivot') || weaponPivot;
-        hunterRig.chest = model.getObjectByName('chest');
-        hunterRig.head = model.getObjectByName('head');
-        hunterRig.weapon = weaponPivot;
-        hunterRig.blade = blade;
-        hunterRig.dualBlades = ['l', 'r'].map((side) => model.getObjectByName(`dual_blade_${side}`)).filter(Boolean);
-        hunterRig.dualHands = ['l', 'r'].map((side) => model.getObjectByName(`dual_hand_${side}`)).filter(Boolean);
-        alternateWeaponPivot = model.getObjectByName('dualWeaponPivot');
-        if (alternateWeaponPivot) alternateWeaponPivot.visible = false;
-        hunterRig.legs = ['l', 'r'].map((side) => model.getObjectByName(`leg_${side}`)).filter(Boolean);
-        hunterRig.shoulders = ['l', 'r'].map((side) => model.getObjectByName(`shoulder_${side}`)).filter(Boolean);
-        applyWeaponMode();
-        markAssetLoaded('獵人');
-      }, undefined, (error) => {
-        showRuntimeError(`獵人 GLB 載入失敗：${error && error.message ? error.message : String(error)}`);
-        markAssetLoaded('獵人 fallback');
-        console.warn('Hunter asset failed to load; using procedural fallback.', error);
-      });
-
-      assetLoader.load(`./assets/models/monster.glb?v=${assetVersion}`, (gltf) => {
-        const model = prepareLoadedModel(gltf.scene, true);
-        model.name = 'monsterVisual';
-        monsterVisual = model;
-        if (gltf.animations && gltf.animations.length > 0) {
-          monsterMixer = new THREE.AnimationMixer(model);
-          gltf.animations.forEach((clip) => {
-            monsterMixer.clipAction(clip).setLoop(THREE.LoopRepeat, Infinity).play();
-          });
-        }
-        monsterGroup.add(model);
-        hideMeshes(proceduralMonsterBody);
-        hideMeshes(proceduralMonsterHead);
-        hideMeshes(proceduralMonsterTail);
-        hideMeshes(proceduralMonsterWings);
-        headGroup = model.getObjectByName('head') || headGroup;
-        tailGroup = model.getObjectByName('tail') || tailGroup;
-        hornLeft = model.getObjectByName('horn_l') || hornLeft;
-        hornRight = model.getObjectByName('horn_r') || hornRight;
-        monsterRig.body = model.getObjectByName('body');
-        monsterRig.head = headGroup;
-        monsterRig.wings = ['l', 'r'].map((side) => model.getObjectByName(`wing_${side}`)).filter(Boolean);
-        monsterRig.tail = tailGroup;
-        monsterRig.eyes = ['l', 'r'].map((side) => model.getObjectByName(`eye_${side}`)).filter(Boolean);
-        syncMonsterPartBreakVisuals();
-        markAssetLoaded('魔物');
-      }, undefined, (error) => {
-        showRuntimeError(`魔物 GLB 載入失敗：${error && error.message ? error.message : String(error)}`);
-        markAssetLoaded('魔物 fallback');
-        console.warn('Monster asset failed to load; using procedural fallback.', error);
-      });
-
-      assetLoader.load(`./assets/models/hunting_ground.glb?v=${assetVersion}`, (gltf) => {
-        const model = prepareLoadedModel(gltf.scene);
-        model.name = 'huntingGroundVisual';
-        // Blender 獵場以原點為中心；遊戲的獵人與魔物戰鬥中線位於 z=5。
-        model.position.z = 5;
-        environmentVisual = model;
-        scene.add(model);
-        ground.position.y = -0.02;
-        clearing.visible = false;
-        boneSite.visible = false;
-        foliageGroup.visible = false;
-        boundaryRocksGroup.visible = false;
-        markAssetLoaded('獵場');
-      }, undefined, (error) => {
-        showRuntimeError(`獵場 GLB 載入失敗：${error && error.message ? error.message : String(error)}`);
-        markAssetLoaded('獵場 fallback');
-        console.warn('Hunting ground asset failed to load; using procedural fallback.', error);
-      });
-    };
-
-    function setWeaponEmissive(hexColor) {
-      const blades = hunterRig.activeBlades.length > 0 ? hunterRig.activeBlades : [blade];
-      blades.forEach((mesh) => {
-        if (mesh && mesh.material && mesh.material.emissive) {
-          mesh.material.emissive.setHex(hexColor);
-        }
-      });
-    }
-
-    function applyWeaponMode() {
-      const usingDualBlades = weaponMode === 'dualblades' && alternateWeaponPivot;
-      if (hunterRig.weapon) hunterRig.weapon.visible = !usingDualBlades;
-      if (alternateWeaponPivot) alternateWeaponPivot.visible = Boolean(usingDualBlades);
-      weaponPivot = usingDualBlades
-        ? alternateWeaponPivot
-        : (hunterRig.weapon || proceduralHunterWeaponPivot);
-      blade = usingDualBlades
-        ? (hunterRig.dualBlades[0] || blade)
-        : (hunterRig.blade || blade);
-      hunterRig.activeBlades = usingDualBlades && hunterRig.dualBlades.length > 0
-        ? hunterRig.dualBlades
-        : [hunterRig.blade || blade].filter(Boolean);
-      setWeaponEmissive(0x000000);
-      document.querySelectorAll('[data-weapon]').forEach((button) => {
-        const active = button.dataset.weapon === weaponMode;
-        button.classList.toggle('active', active);
-        button.setAttribute('aria-pressed', String(active));
-      });
-    }
-
-    function setWeaponMode(mode) {
-      if (!weaponProfiles[mode] || gameOver || isPaused || weaponMode === mode) return;
-      if (player.isCharging) {
-        player.isCharging = false;
-        player.chargeTime = 0;
-        player.chargeLevel = 1;
-      }
-      weaponMode = mode;
-      applyWeaponMode();
-      showBanner(`⚔️ 已切換${weaponProfiles[mode].label}`);
-    }
-
-    loadVisualAssets();
-
-    const setMonsterEmissive = (color) => {
-      monsterMaterials.forEach((material) => {
-        if (!material || !material.emissive) return;
-        const baseEmissive = material.userData?.baseEmissive;
-        const baseIntensity = material.userData?.baseEmissiveIntensity ?? 1;
-        const hasInherentGlow = baseEmissive && (baseEmissive.r + baseEmissive.g + baseEmissive.b > 0.05);
-        if (color === 0x000000) {
-          if (baseEmissive) material.emissive.copy(baseEmissive);
-          else material.emissive.setHex(0x000000);
-          material.emissiveIntensity = baseIntensity;
-        } else if (color === 0x3a002d && hasInherentGlow) {
-          material.emissive.copy(baseEmissive);
-          material.emissiveIntensity = baseIntensity * 1.4;
-        } else {
-          material.emissive.setHex(color);
-          material.emissiveIntensity = 1;
-        }
-      });
-    };
-
-    let hunterStepPhase = 0;
-
-    const animateHunterVisual = (dt, moving) => {
-      if (!hunterVisual) return;
-      const time = clock.elapsedTime;
-      const speed = moving ? 10.5 : 2.4;
-      const stride = moving ? Math.sin(time * speed) : 0;
-      const breathe = Math.sin(time * 2.4) * 0.012;
-      if (moving) {
-        const previousStep = Math.floor(hunterStepPhase / Math.PI);
-        hunterStepPhase += dt * speed;
-        if (Math.floor(hunterStepPhase / Math.PI) !== previousStep) audio.playFootstep();
-      } else {
-        hunterStepPhase = 0;
-      }
-      hunterVisual.position.y = moving ? Math.abs(stride) * 0.035 : breathe;
-      hunterVisual.rotation.z = player.state === 'charging' ? -0.055 : (moving ? -moveInputForVisual.x * 0.045 : 0);
-
-      if (hunterRig.chest) {
-        hunterRig.chest.scale.y = 1 + breathe * 0.8;
-      }
-      hunterRig.legs.forEach((leg, index) => {
-        leg.rotation.x = moving ? stride * (index === 0 ? 0.22 : -0.22) : 0;
-        leg.rotation.z = moving ? stride * (index === 0 ? 0.035 : -0.035) : 0;
-      });
-      hunterRig.shoulders.forEach((shoulder, index) => {
-        shoulder.rotation.z = moving ? stride * (index === 0 ? 0.06 : -0.06) : 0;
-      });
-    };
-
-    let moveInputForVisual = { x: 0, z: 0 };
-
-    const updateSingleTrail = (trail, targetBlade, isSwinging, targetOpacity, colorHex, tipY, dt) => {
-      trail.material.opacity = THREE.MathUtils.lerp(trail.material.opacity, targetOpacity, 12 * dt);
-      if (!isSwinging || !targetBlade || !targetBlade.parent) {
-        trail.active = false;
-        return;
-      }
-      targetBlade.localToWorld(trail.tip.set(0, tipY, 0));
-      if (!trail.active) {
-        trail.history.forEach((point) => point.copy(trail.tip));
-        trail.active = true;
-      } else {
-        for (let i = trail.history.length - 1; i > 0; i--) {
-          trail.history[i].lerp(trail.history[i - 1], Math.min(1, dt * 24));
-        }
-        trail.history[0].copy(trail.tip);
-      }
-      trail.history.forEach((point, index) => {
-        const offset = index * 3;
-        trail.positions[offset] = point.x;
-        trail.positions[offset + 1] = point.y;
-        trail.positions[offset + 2] = point.z;
-      });
-      trail.geometry.attributes.position.needsUpdate = true;
-      trail.material.color.setHex(colorHex);
-    };
-
-    const updateBladeTrail = (dt) => {
-      const isSwinging = player.state === 'attack_light' || player.state === 'attack_heavy';
-      const targetOpacity = isSwinging ? (player.state === 'attack_heavy' ? 0.78 : 0.5) : 0;
-      const colorHex = player.state === 'attack_heavy' ? 0xffcf72 : 0xcaf7ff;
-      const usingDual = weaponMode === 'dualblades' && hunterRig.dualBlades.length >= 2;
-      const tipY = usingDual ? 1.95 : 2.1;
-
-      updateSingleTrail(primaryBladeTrail, blade, isSwinging, targetOpacity, colorHex, tipY, dt);
-      updateSingleTrail(
-        secondaryBladeTrail,
-        usingDual ? hunterRig.dualBlades[1] : null,
-        isSwinging && usingDual,
-        usingDual ? targetOpacity : 0,
-        colorHex,
-        tipY,
-        dt
-      );
-    };
-
-    const animateMonsterVisual = (dt) => {
-      if (!monsterVisual) return;
-      const time = clock.elapsedTime;
-      const enraged = monster.isEnraged;
-      const pulse = 1 + Math.sin(time * (enraged ? 11 : 2.2)) * (enraged ? 0.035 : 0.012);
-      const breathing = Math.sin(time * 2.1) * 0.04;
-      const isMoving = monster.state === 'chase' || monster.state === 'charge';
-      const gait = isMoving ? Math.sin(time * (enraged ? 9.5 : 7.0)) : 0;
-      const hitReaction = monster.hitFlashTimer > 0
-        ? Math.sin(time * 46) * Math.min(1, monster.hitFlashTimer * 8)
-        : 0;
-
-      if (monsterRig.body) {
-        monsterRig.body.scale.set(1 + Math.abs(hitReaction) * 0.025, pulse + Math.abs(hitReaction) * 0.045, 1);
-        monsterRig.body.position.y = breathing - Math.abs(hitReaction) * 0.06;
-        monsterRig.body.rotation.z = hitReaction * 0.035;
-      }
-      if (monsterRig.head) {
-        monsterRig.head.rotation.x = monster.state === 'roar'
-          ? -0.22 - Math.sin(time * 14) * 0.04
-          : Math.sin(time * 2.2) * 0.018 - hitReaction * 0.035;
-      }
-      monsterRig.wings.forEach((wing, index) => {
-        const phase = index === 0 ? 0 : Math.PI;
-        const flap = isMoving ? Math.sin(time * (enraged ? 8.5 : 6.2) + phase) : Math.sin(time * 2.1 + phase) * 0.3;
-        wing.rotation.z = flap * (enraged ? 0.16 : 0.08);
-        wing.rotation.x = monster.state === 'roar' ? -0.18 : 0;
-      });
-      if (monsterRig.tail) {
-        monsterRig.tail.rotation.y = monster.state === 'spin'
-          ? 0
-          : Math.sin(time * (enraged ? 5.2 : 3.0)) * 0.08;
-        monsterRig.tail.rotation.x = gait * 0.035;
-      }
-      monsterRig.eyes.forEach((eye) => {
-        eye.scale.setScalar(enraged ? 1.16 + Math.sin(time * 12) * 0.06 : 1);
-      });
-    };
-
-    const updateEnrageAura = (dt) => {
-      const targetOpacity = monster.isEnraged ? 0.42 : 0;
-      auraRings.forEach((ring, index) => {
-        ring.material.opacity = THREE.MathUtils.lerp(ring.material.opacity, targetOpacity * (1 - index * 0.18), 5 * dt);
-        ring.rotation.y += dt * (index % 2 === 0 ? 0.9 : -1.2);
-        ring.rotation.z += dt * (index % 2 === 0 ? -0.7 : 0.6);
-        ring.scale.setScalar(1 + Math.sin(clock.elapsedTime * 5 + index) * 0.035);
-      });
-    };
-
-    const updateMonsterTelegraph = (dt) => {
-      const isCharge = monster.state === 'telegraph_charge';
-      const isSpin = monster.state === 'telegraph_spin';
-      const isRoar = monster.state === 'roar';
-      const isTelegraphing = isCharge || isSpin || isRoar;
-      const targetOpacity = isTelegraphing ? (monster.isEnraged ? 0.62 : 0.44) : 0;
-      monsterWarningRing.material.opacity = THREE.MathUtils.lerp(
-        monsterWarningRing.material.opacity,
-        targetOpacity,
-        10 * dt
-      );
-
-      if (!isTelegraphing) return;
-
-      const color = isCharge ? 0xff4d4d : (isSpin ? 0xffa726 : 0xb26cff);
-      monsterWarningRing.material.color.setHex(color);
-      const pulse = 0.92 + Math.sin(clock.elapsedTime * (isRoar ? 12 : 18)) * 0.1;
-      const stateScale = isCharge ? 1.0 : (isSpin ? 1.12 : 0.82);
-      monsterWarningRing.scale.setScalar(stateScale * pulse * (monster.isEnraged ? 1.08 : 1));
-    };
-
-    /* ==============================================================
-       6. 狀態系統與數值 (Player & Boss Data)
-       ============================================================== */
-    let gameOver = false;
-    let hitstopTimer = 0; // 卡肉頓幀計時器
-    let screenShakeTimer = 0; // 鏡頭微震
-    let screenShakeIntensity = 0;
-    let isLockOn = false;
-    let isPaused = false;
-    let lastHudSnapshot = '';
-
-    const player = {
-      hp: 100,
-      maxHp: 100,
-      stamina: 100,
-      maxStamina: 100,
-      sharpness: 90, // 0~100
-      potions: 3,
-      speed: 11.5,
-      state: 'idle', // idle, dodge, attack, ear_cover, potion, sharpen
-      comboStep: 0,  // 0: 縱斬, 1: 橫掃, 2: 上撈
-      timer: 0,
-      invincible: 0,
-      chargeTime: 0,
-      isCharging: false,
-      chargeLevel: 1,
-      comboTimer: 0,
-      hasHitThisSwing: false
-    };
-
-    const monster = {
-      hp: 800,
-      maxHp: 800,
-      state: 'chase', // chase, telegraph_charge, charge, telegraph_spin, spin, roar, cooldown, stagger
-      timer: 1.5,
-      isEnraged: false,
-      enrageTimer: 0,
-      chargeDir: new THREE.Vector3(),
-      hasDealtDamage: false,
-      staggerBuildUp: 0,
-      hitFlashTimer: 0,
-      // 部位破壞狀態
-      headHp: 200,
-      isHeadBroken: false,
-      tailHp: 180,
-      isTailBroken: false,
-      hasRoared25: false,
-      hasRoared60: false
-    };
-
-    const saveStorage = (() => {
-      try {
-        return window.localStorage;
-      } catch {
-        return null;
-      }
-    })();
-    const restoredSave = readSave(saveStorage);
-    const persistedStats = readStats(saveStorage);
-    const gameStats = {
-      hunts: persistedStats.hunts,
-      victories: persistedStats.victories,
-      defeats: persistedStats.defeats
-    };
-
-    const ui = {
-      hpBar: document.getElementById('hp-bar'),
-      hpText: document.getElementById('hp-text'),
-      staminaBar: document.getElementById('stamina-bar'),
-      staminaText: document.getElementById('stamina-text'),
-      potionCount: document.getElementById('potion-count'),
-      statsSummary: document.getElementById('stats-summary'),
-      sharpnessFill: document.getElementById('sharpness-fill'),
-      sharpnessText: document.getElementById('sharpness-text'),
-      bossHpBar: document.getElementById('boss-hp-bar'),
-      bossHpText: document.getElementById('boss-hp-text'),
-      bossStateTag: document.getElementById('boss-state-tag'),
-      enrageBadge: document.getElementById('boss-enrage-badge'),
-      partHead: document.getElementById('part-head'),
-      partTail: document.getElementById('part-tail'),
-      pauseButton: document.getElementById('pause-button'),
-      restartButton: document.getElementById('restart-button'),
-      lockButton: document.querySelector('[data-action="lock"]'),
-      saveButton: document.getElementById('save-button'),
-      loadButton: document.getElementById('load-button'),
-      clearSaveButton: document.getElementById('clear-save-button'),
-      saveStatus: document.getElementById('save-status')
-    };
-
-    function setSaveStatus(message) {
-      if (ui.saveStatus) ui.saveStatus.innerText = message;
-    }
-
-    function syncMonsterPartBreakVisuals() {
-      if (hornLeft) hornLeft.visible = !monster.isHeadBroken;
-      if (hornRight) hornRight.visible = !monster.isHeadBroken;
-      if (tailGroup) {
-        const tailScale = monster.isTailBroken ? 0.2 : 1;
-        tailGroup.scale.set(tailScale, tailScale, tailScale);
-      }
-      if (ui?.partHead) {
-        ui.partHead.className = monster.isHeadBroken ? 'part-broken' : '';
-        ui.partHead.innerText = monster.isHeadBroken ? '頭部角: 已折斷 💥' : '頭部角: 正常';
-      }
-      if (ui?.partTail) {
-        ui.partTail.className = monster.isTailBroken ? 'part-broken' : '';
-        ui.partTail.innerText = monster.isTailBroken ? '尾巴: 已斷裂 🗡️' : '尾巴: 完好';
-      }
-    }
-
-    function applySaveState(save) {
-      if (!save || save.player.hp <= 0 || save.monster.hp <= 0) return false;
-      player.hp = save.player.hp;
-      player.stamina = save.player.stamina;
-      player.sharpness = save.player.sharpness;
-      player.potions = save.player.potions;
-      monster.hp = save.monster.hp;
-      monster.headHp = save.monster.headHp;
-      monster.tailHp = save.monster.tailHp;
-      monster.isHeadBroken = save.monster.isHeadBroken;
-      monster.isTailBroken = save.monster.isTailBroken;
-      monster.hasRoared60 = Boolean(save.monster.hasRoared60);
-      monster.hasRoared25 = Boolean(save.monster.hasRoared25);
-      monster.state = 'chase';
-      monster.timer = 1.5;
-      monster.isEnraged = false;
-      monster.enrageTimer = 0;
-      monster.hasDealtDamage = false;
-      monster.staggerBuildUp = 0;
-      monster.hitFlashTimer = 0;
-      eyeLightL.intensity = 0;
-      eyeLightR.intensity = 0;
-      if (ui.enrageBadge) ui.enrageBadge.style.display = 'none';
-      monsterGroup.rotation.set(0, 0, 0);
-      setMonsterEmissive(0x000000);
-      syncMonsterPartBreakVisuals();
-      hunterGroup.position.set(save.player.position.x, save.player.position.y, save.player.position.z);
-      monsterGroup.position.set(save.monster.position.x, save.monster.position.y, save.monster.position.z);
-      cameraYaw = save.camera.yaw;
-      cameraPitch = save.camera.pitch;
-      player.state = 'idle';
-      player.timer = 0;
-      player.invincible = 0;
-      player.isCharging = false;
-      player.chargeTime = 0;
-      player.chargeLevel = 1;
-      player.comboStep = 0;
-      player.comboTimer = 0;
-      weaponMode = save.equipment?.weaponMode === 'dualblades' ? 'dualblades' : 'greatsword';
-      applyWeaponMode();
-      gameOver = false;
-      isPaused = false;
-      ui.pauseButton.innerText = '暫停';
-      ui.pauseButton.setAttribute('aria-pressed', 'false');
-      ui.pauseButton.style.display = 'block';
-      document.getElementById('message-overlay').style.display = 'none';
-      lastHudSnapshot = '';
-      updateHUD();
-      return true;
-    }
-
-    function resetHuntForNewGame() {
-      resetInputState();
-      player.hp = player.maxHp;
-      player.stamina = player.maxStamina;
-      player.sharpness = 90;
-      player.potions = 3;
-      player.state = 'idle';
-      player.timer = 0;
-      player.invincible = 0;
-      player.isCharging = false;
-      player.chargeTime = 0;
-      player.chargeLevel = 1;
-      player.comboStep = 0;
-      player.comboTimer = 0;
-      player.hasHitThisSwing = false;
-
-      monster.hp = monster.maxHp;
-      monster.headHp = 200;
-      monster.tailHp = 180;
-      monster.isHeadBroken = false;
-      monster.isTailBroken = false;
-      monster.hasRoared60 = false;
-      monster.hasRoared25 = false;
-      monster.state = 'chase';
-      monster.timer = 1.5;
-      monster.isEnraged = false;
-      monster.enrageTimer = 0;
-      monster.hasDealtDamage = false;
-      monster.staggerBuildUp = 0;
-      monster.hitFlashTimer = 0;
-
-      eyeLightL.intensity = 0;
-      eyeLightR.intensity = 0;
-      if (ui.enrageBadge) ui.enrageBadge.style.display = 'none';
-      monsterGroup.position.set(0, 0, -12);
-      monsterGroup.rotation.set(0, 0, 0);
-      hunterGroup.position.set(0, 0, 22);
-      hunterGroup.rotation.set(0, 0, 0);
-      setMonsterEmissive(0x000000);
-      setWeaponEmissive(0x000000);
-      syncMonsterPartBreakVisuals();
-
-      gameOver = false;
-      isPaused = false;
-      ui.pauseButton.innerText = '暫停';
-      ui.pauseButton.setAttribute('aria-pressed', 'false');
-      ui.pauseButton.style.display = 'block';
-      document.getElementById('message-overlay').style.display = 'none';
-      lastHudSnapshot = '';
-      updateHUD();
-      showBanner('⚔️ 新一輪狩獵開始！');
-    }
-
-    function buildSaveState() {
-      return createSaveState({
-        player,
-        monster,
-        hunterPosition: hunterGroup.position,
-        monsterPosition: monsterGroup.position,
-        camera: { yaw: cameraYaw, pitch: cameraPitch },
-        stats: gameStats,
-        weaponMode
-      });
-    }
-
-    function saveProgress() {
-      if (gameOver || player.hp <= 0 || monster.hp <= 0) {
-        setSaveStatus('狩獵已結束，無法儲存');
-        return;
-      }
-      const saved = writeSave(saveStorage, buildSaveState());
-      setSaveStatus(saved
-        ? `已儲存 ${new Date().toLocaleTimeString('zh-TW')}｜獵人 ${Math.ceil(player.hp)}／魔物 ${Math.ceil(monster.hp)}`
-        : '瀏覽器拒絕存檔');
-      if (saved) showBanner('💾 狩獵進度已儲存');
-    }
-
-    function loadProgress() {
-      const save = readSave(saveStorage);
-      if (applySaveState(save)) {
-        setSaveStatus(`已讀取｜獵人 ${Math.ceil(player.hp)}／魔物 ${Math.ceil(monster.hp)}`);
-        showBanner('↺ 已讀取狩獵進度');
-      } else {
-        setSaveStatus('沒有可讀取的有效存檔');
-      }
-    }
-
-    function clearProgress() {
-      const removed = removeSave(saveStorage);
-      setSaveStatus(removed ? '存檔已清除' : '無法清除存檔');
-    }
-
-    ui.saveButton?.addEventListener('click', saveProgress);
-    ui.loadButton?.addEventListener('click', loadProgress);
-    ui.clearSaveButton?.addEventListener('click', clearProgress);
-
-    const upAxis = new THREE.Vector3(0, 1, 0);
-    const forwardAxis = new THREE.Vector3(0, 0, 1);
-    const tempVectors = {
-      moveInput: new THREE.Vector3(),
-      moveVector: new THREE.Vector3(),
-      forward: new THREE.Vector3(),
-      toBoss: new THREE.Vector3(),
-      toHunter: new THREE.Vector3(),
-      hitCenter: new THREE.Vector3(),
-      headWorld: new THREE.Vector3(),
-      tailWorld: new THREE.Vector3(),
-      bossScreen: new THREE.Vector3(),
-      targetCamera: new THREE.Vector3(),
-      lookTarget: new THREE.Vector3()
-    };
-
-    /* ==============================================================
-       7. 操作輸入監聽 (Controls & Keyboard / Mouse)
-       ============================================================== */
-    const keys = Object.create(null);
-    const repeatableActions = new Set([' ', 'j', 'k', 'e', 'r', 'tab', 'f', 'p']);
-    let isRightMouseDown = false;
-    let cameraYaw = 0;
-    let cameraPitch = 0.35;
-
-    if (restoredSave && applySaveState(restoredSave)) {
-      setSaveStatus('已自動讀取上次狩獵進度');
-    }
-
-    window.addEventListener('keydown', (e) => {
-      const k = e.key.toLowerCase();
-      keys[k] = true;
-      if (e.repeat && repeatableActions.has(k)) return;
-      if (k === ' ') e.preventDefault();
-      if (k === ' ') triggerDodge();
-      if (k === 'j') handleLightAttack();
-      if (k === 'k') startCharge();
-      if (k === 'e') usePotion();
-      if (k === 'p') togglePause();
-      if (k === 'r') useSharpen();
-      if (k === '1') setWeaponMode('greatsword');
-      if (k === '2') setWeaponMode('dualblades');
-      if (k === 'tab' || k === 'f') {
-        e.preventDefault();
-        toggleLockOn();
-      }
-    });
-
-    window.addEventListener('keyup', (e) => {
-      const k = e.key.toLowerCase();
-      keys[k] = false;
-      if (k === 'k' && player.isCharging) {
-        releaseCharge();
-      }
-    });
-
-    window.addEventListener('mousedown', (e) => {
-      if (e.button === 0 && !player.isCharging) {
-        handleLightAttack();
-      }
-      if (e.button === 2) {
-        isRightMouseDown = true;
-      }
-    });
-
-    window.addEventListener('mouseup', (e) => {
-      if (e.button === 2) isRightMouseDown = false;
-    });
-
-    window.addEventListener('contextmenu', (e) => e.preventDefault());
-
-    function resetInputState() {
-      for (const key of Object.keys(keys)) keys[key] = false;
-      isRightMouseDown = false;
-      if (player.isCharging) {
-        player.isCharging = false;
-        player.chargeTime = 0;
-        player.chargeLevel = 1;
-        player.state = 'idle';
-      }
-    }
-
-    window.addEventListener('blur', resetInputState);
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) resetInputState();
-    });
-
-    function togglePause() {
-      if (gameOver) return;
-      isPaused = !isPaused;
-      ui.pauseButton.innerText = isPaused ? '繼續' : '暫停';
-      ui.pauseButton.setAttribute('aria-pressed', String(isPaused));
-      if (isPaused) resetInputState();
-    }
-
-    ui.pauseButton.addEventListener('click', togglePause);
-    ui.restartButton.addEventListener('click', resetHuntForNewGame);
-    document.querySelectorAll('[data-weapon]').forEach((button) => {
-      button.addEventListener('click', () => setWeaponMode(button.dataset.weapon));
-    });
-
-    document.querySelectorAll('[data-hold-key]').forEach((button) => {
-      const key = button.dataset.holdKey;
-      const release = (event) => {
-        event.preventDefault();
-        keys[key] = false;
-      };
-      button.addEventListener('pointerdown', (event) => {
-        event.preventDefault();
-        keys[key] = true;
-        button.setPointerCapture?.(event.pointerId);
-      });
-      button.addEventListener('pointerup', release);
-      button.addEventListener('pointercancel', release);
-      button.addEventListener('lostpointercapture', () => { keys[key] = false; });
-    });
-
-    document.querySelectorAll('[data-action]').forEach((button) => {
-      const action = button.dataset.action;
-      button.addEventListener('pointerdown', (event) => {
-        event.preventDefault();
-        if (action === 'charge') {
-          startCharge();
-        } else if (action === 'light') {
-          handleLightAttack();
-        } else if (action === 'dodge') {
-          triggerDodge();
-        } else if (action === 'potion') {
-          usePotion();
-        } else if (action === 'sharpen') {
-          useSharpen();
-        } else if (action === 'lock') {
-          toggleLockOn();
-        }
-        button.setPointerCapture?.(event.pointerId);
-      });
-      if (action === 'charge') {
-        const releaseChargeInput = (event) => {
-          event.preventDefault();
-          releaseCharge();
-        };
-        button.addEventListener('pointerup', releaseChargeInput);
-        button.addEventListener('pointercancel', releaseChargeInput);
-        button.addEventListener('lostpointercapture', releaseCharge);
-      }
-    });
-
-    window.addEventListener('mousemove', (e) => {
-      if (isRightMouseDown && !isLockOn && !isPaused) {
-        cameraYaw -= e.movementX * 0.004;
-        cameraPitch = Math.max(0.1, Math.min(1.2, cameraPitch + e.movementY * 0.003));
-      }
-    });
-
-    function toggleLockOn() {
-      if (gameOver || isPaused) return;
-      isLockOn = !isLockOn;
-      const reticle = document.getElementById('lockon-reticle');
-      if (ui.lockButton) {
-        ui.lockButton.classList.toggle('active', isLockOn);
-        ui.lockButton.innerText = isLockOn ? '解除鎖定' : '鎖定魔物';
-        ui.lockButton.setAttribute('aria-pressed', String(isLockOn));
-      }
-      if (isLockOn) {
-        reticle.style.display = 'block';
-        showBanner("🎯 已鎖定魔物視角");
-      } else {
-        reticle.style.display = 'none';
-        showBanner("🔓 解除鎖定");
-      }
-    }
-
-    function showBanner(text) {
-      const b = document.getElementById('banner-notify');
-      b.innerText = text;
-      b.style.display = 'none';
-      void b.offsetWidth; // 重置動畫
-      b.style.display = 'block';
-      setTimeout(() => { b.style.display = 'none'; }, 2200);
-    }
-
-    /* ==============================================================
-       8. 獵人招式與動作機制 (Combos, Dodges, Items)
-       ============================================================== */
-    function triggerDodge() {
-      if (gameOver || isPaused || player.state !== 'idle' || player.stamina < 22) return;
-      player.stamina -= 22;
-      player.state = 'dodge';
-      player.timer = 0.44;
-      player.invincible = 0.38; // 380ms 無敵翻滾幀
-      audio.playRoll();
-    }
-
-    function handleLightAttack() {
-      const profile = weaponProfiles[weaponMode];
-      if (gameOver || isPaused || player.state !== 'idle' || player.stamina < profile.lightCost) return;
-      player.stamina -= profile.lightCost;
-      player.comboStep = nextComboStep(player.comboStep, player.comboTimer > 0);
-      player.comboTimer = 0.9;
-      player.state = 'attack_light';
-      player.timer = profile.lightDuration;
-      player.hasHitThisSwing = false;
-      audio.playSlash(false);
-    }
-
-    function startCharge() {
-      const profile = weaponProfiles[weaponMode];
-      if (gameOver || isPaused || player.state !== 'idle' || player.stamina < profile.chargeCost) return;
-      player.isCharging = true;
-      player.chargeTime = 0;
-      player.chargeLevel = getChargeLevel(0);
-      player.state = 'charging';
-    }
-
-    function releaseCharge() {
-      if (gameOver || isPaused || !player.isCharging) return;
-      const profile = weaponProfiles[weaponMode];
-      player.isCharging = false;
-      player.stamina -= profile.chargeCost;
-      player.state = 'attack_heavy';
-      player.timer = profile.heavyDuration;
-      player.hasHitThisSwing = false;
-      audio.playSlash(true);
-    }
-
-    function usePotion() {
-      if (gameOver || isPaused || player.state !== 'idle' || player.potions <= 0 || player.hp >= player.maxHp) return;
-      player.state = 'potion';
-      player.timer = 0.7;
-      player.potions--;
-      player.hp = Math.min(player.maxHp, player.hp + 45);
-      audio.playHeal();
-      spawnFloatingText(hunterGroup.position, "+45 HP 🧪", "#2ecc71");
-      updateHUD();
-    }
-
-    function useSharpen() {
-      if (gameOver || isPaused || player.state !== 'idle' || player.sharpness >= 100) return;
-      player.state = 'sharpen';
-      player.timer = 1.0;
-      player.sharpness = 100;
-      audio.playSharpen();
-      showBanner("✨ 刀刃研磨完畢！斬味最大化！");
-      updateHUD();
-    }
-
-    function getCurrentSharpness() {
-      return getSharpnessLevel(player.sharpness, SHARPNESS_LEVELS);
-    }
-
-    function triggerHitstop(duration = 0.08) {
-      hitstopTimer = duration;
-    }
-
-    function triggerScreenShake(intensity = 0.5, duration = 0.25) {
-      screenShakeIntensity = intensity;
-      screenShakeTimer = duration;
-    }
-
-    function triggerImpactFlash(isHeavy = false) {
-      impactFlash.style.background = isHeavy ? 'rgba(255, 145, 72, 0.32)' : 'rgba(255, 220, 130, 0.24)';
-      impactFlash.classList.remove('active');
-      void impactFlash.offsetWidth;
-      impactFlash.classList.add('active');
-    }
-
-    function triggerDamageFeedback(sourcePosition) {
-      damageVignette.classList.remove('active');
-      void damageVignette.offsetWidth;
-      damageVignette.classList.add('active');
-
-      const sourceScreen = sourcePosition.clone();
-      sourceScreen.y += 2.2;
-      sourceScreen.project(camera);
-      let x = (sourceScreen.x * 0.5 + 0.5) * window.innerWidth;
-      let y = (-(sourceScreen.y * 0.5) + 0.5) * window.innerHeight;
-      if (!Number.isFinite(x) || !Number.isFinite(y)) {
-        x = window.innerWidth / 2;
-        y = window.innerHeight / 2;
-      }
-
-      const centerX = window.innerWidth / 2;
-      const centerY = window.innerHeight / 2;
-      const angle = Math.atan2(y - centerY, x - centerX) + Math.PI / 2;
-      const margin = 46;
-      x = Math.max(margin, Math.min(window.innerWidth - margin, x));
-      y = Math.max(margin, Math.min(window.innerHeight - margin, y));
-      damageDirection.style.left = `${x}px`;
-      damageDirection.style.top = `${y}px`;
-      damageDirection.style.setProperty('--damage-angle', `${angle}rad`);
-      damageDirection.classList.remove('active');
-      void damageDirection.offsetWidth;
-      damageDirection.classList.add('active');
-    }
-
-    function spawnFloatingText(worldPos, text, color = "#ffeb3b") {
-      const pos = worldPos.clone();
-      pos.y += 3.8;
-      pos.project(camera);
-
-      const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
-      const y = (-(pos.y * 0.5) + 0.5) * window.innerHeight;
-
-      const div = document.createElement('div');
-      div.className = 'damage-number';
-      div.style.left = `${x}px`;
-      div.style.top = `${y}px`;
-      div.style.color = color;
-      div.innerText = text;
-      document.body.appendChild(div);
-      setTimeout(() => div.remove(), 750);
-    }
-
-    /* ==============================================================
-       9. 獵人更新邏輯 (Player Update)
-       ============================================================== */
-    function updatePlayer(dt) {
-      if (player.comboTimer > 0) {
-        player.comboTimer = Math.max(0, player.comboTimer - dt);
-      } else {
-        player.comboStep = 0;
-      }
-
-      // 無敵閃爍反饋
-      if (player.invincible > 0) {
-        player.invincible -= dt;
-        hunterBody.material.emissive.setHex(0x3498db);
-      } else {
-        hunterBody.material.emissive.setHex(0x000000);
-      }
-
-      // 移動向量依據視角 Yaw 轉換
-      const moveInput = tempVectors.moveInput.set(0, 0, 0);
-      if (keys['w']) moveInput.z -= 1;
-      if (keys['s']) moveInput.z += 1;
-      if (keys['a']) moveInput.x -= 1;
-      if (keys['d']) moveInput.x += 1;
-
-      const moveVec = tempVectors.moveVector.set(0, 0, 0);
-      if (moveInput.lengthSq() > 0) {
-        moveInput.normalize();
-        moveVec.copy(moveInput).applyAxisAngle(upAxis, cameraYaw);
-      }
-
-      moveInputForVisual.x = moveVec.x;
-      moveInputForVisual.z = moveVec.z;
-      animateHunterVisual(dt, moveVec.lengthSq() > 0);
-
-      // 狀態分流
-      if (player.state === 'idle') {
-        player.stamina = Math.min(player.maxStamina, player.stamina + 24 * dt);
-        weaponPivot.rotation.set(0, 0, 0);
-        hunterRig.dualHands.forEach((hand, idx) => {
-          hand.rotation.set(0.175, 0, idx === 0 ? 0.14 : -0.14);
-        });
-        hunterGroup.rotation.x = 0;
-        setWeaponEmissive(0x000000);
-
-        if (moveVec.lengthSq() > 0) {
-          hunterGroup.position.addScaledVector(moveVec, player.speed * dt);
-          hunterGroup.rotation.y = Math.atan2(moveVec.x, moveVec.z);
-        }
-      } 
-      else if (player.state === 'charging') {
-        player.chargeTime = Math.min(1.65, player.chargeTime + dt);
-        player.chargeLevel = getChargeLevel(player.chargeTime);
-        const chargeColor = player.chargeLevel >= 3 ? 0xff4757 : (player.chargeLevel === 2 ? 0xf39c12 : 0xe67e22);
-        setWeaponEmissive(chargeColor);
-        weaponPivot.rotation.x = -Math.PI * 0.7;
-
-        // 面對魔物緩慢轉向
-        const toBoss = tempVectors.toBoss.subVectors(monsterGroup.position, hunterGroup.position);
-        hunterGroup.rotation.y = THREE.MathUtils.lerp(hunterGroup.rotation.y, Math.atan2(toBoss.x, toBoss.z), 4 * dt);
-      }
-      else if (player.state === 'dodge') {
-        player.timer -= dt;
-        const forward = tempVectors.forward.copy(forwardAxis).applyAxisAngle(upAxis, hunterGroup.rotation.y);
-        hunterGroup.position.addScaledVector(forward, player.speed * 2.0 * dt);
-        hunterGroup.rotation.x += 16 * dt;
-        if (player.timer <= 0) {
-          player.state = 'idle';
-          hunterGroup.rotation.x = 0;
-        }
-      } 
-      else if (player.state === 'ear_cover') {
-        // 咆哮掩耳硬直
-        player.timer -= dt;
-        weaponPivot.rotation.x = -Math.PI * 0.3;
-        if (player.timer <= 0) {
-          player.state = 'idle';
-        }
-      }
-      else if (player.state === 'potion' || player.state === 'sharpen') {
-        player.timer -= dt;
-        if (player.timer <= 0) {
-          player.state = 'idle';
-        }
-      }
-      else if (player.state === 'attack_light' || player.state === 'attack_heavy') {
-        const isHeavy = player.state === 'attack_heavy';
-        const profile = weaponProfiles[weaponMode];
-        const duration = isHeavy ? profile.heavyDuration : profile.lightDuration;
-        player.timer -= dt;
-        const progress = 1 - (player.timer / duration);
-
-        const comboAngle = !isHeavy ? [0, 0.12, -0.12][player.comboStep] : 0;
-        weaponPivot.rotation.x = -Math.PI * 0.7 + Math.PI * 1.55 * Math.min(1, progress * 1.4);
-        weaponPivot.rotation.z = comboAngle;
-        if (weaponMode === 'dualblades') {
-          hunterRig.dualHands.forEach((hand, idx) => {
-            const sideDir = idx === 0 ? -1 : 1;
-            hand.rotation.z = sideDir * (0.28 * Math.sin(progress * Math.PI * 2));
-          });
-        }
-
-        if (!player.hasHitThisSwing && progress > 0.3 && progress < 0.7) {
-          checkHunterAttackHit(isHeavy, player.chargeLevel, !isHeavy ? [1, 1.08, 1.2][player.comboStep] : 1);
-        }
-
-        if (player.timer <= 0) {
-          player.state = 'idle';
-          weaponPivot.rotation.x = 0;
-          weaponPivot.rotation.z = 0;
-          player.chargeLevel = 1;
-          setWeaponEmissive(0x000000);
-        }
-      }
-
-      // 地圖邊界鎖定
-      hunterGroup.position.x = Math.max(-65, Math.min(65, hunterGroup.position.x));
-      hunterGroup.position.z = Math.max(-65, Math.min(65, hunterGroup.position.z));
-    }
-
-    /* ==============================================================
-       10. 獵人判定命中魔物 (弱點與部位破壞、斬味消耗)
-       ============================================================== */
-    function checkHunterAttackHit(isHeavy, chargeLevel = 1, comboMultiplier = 1) {
-      const profile = weaponProfiles[weaponMode];
-      const forward = tempVectors.forward.copy(forwardAxis).applyAxisAngle(upAxis, hunterGroup.rotation.y);
-      const hitCenter = tempVectors.hitCenter.copy(hunterGroup.position).addScaledVector(forward, 3.4);
-
-      // 計算與魔物各部位距離
-      const distToMonster = hitCenter.distanceTo(monsterGroup.position);
-      if (isWithinRange(distToMonster, profile.hitRange)) {
-        player.hasHitThisSwing = true;
-
-        // 斬味倍率
-        const sharpness = getCurrentSharpness();
-        player.sharpness = Math.max(0, player.sharpness - (isHeavy ? 2.5 : 1.2));
-
-        const baseDamage = isHeavy
-          ? profile.heavyDamageMin + Math.random() * (profile.heavyDamageMax - profile.heavyDamageMin)
-          : profile.lightDamageMin + Math.random() * (profile.lightDamageMax - profile.lightDamageMin);
-        const chargeMultiplier = isHeavy ? [1, 1.15, 1.35, 1.6][Math.max(1, Math.min(3, chargeLevel))] : 1;
-
-        // 弱點判定：判定是打中頭部還是身軀/尾巴
-        const headWorldPos = tempVectors.headWorld;
-        headGroup.getWorldPosition(headWorldPos);
-        const distToHead = hitCenter.distanceTo(headWorldPos);
-
-        const tailWorldPos = tempVectors.tailWorld;
-        tailGroup.getWorldPosition(tailWorldPos);
-        const distToTail = hitCenter.distanceTo(tailWorldPos);
-
-        let hitWeakpoint = false;
-        let weakpointMultiplier = 1;
-        if (distToHead < 3.2) {
-          hitWeakpoint = true;
-          weakpointMultiplier = 1.35;
-        }
-
-        const finalDamage = calculateAttackDamage({
-          baseDamage,
-          sharpnessMultiplier: sharpness.mult,
-          weakpointMultiplier,
-          chargeMultiplier,
-          comboMultiplier
-        });
-
-        if (hitWeakpoint) {
-          monster.headHp -= finalDamage;
-          if (monster.headHp <= 0 && !monster.isHeadBroken) {
-            monster.isHeadBroken = true;
-            syncMonsterPartBreakVisuals();
-            particleSystem.spawnHitSparks(headWorldPos, 32, true);
-            audio.playPartBreak();
-            showBanner("💥【部位破壞】轟龍頭角折斷！");
-          }
-        } else if (distToTail < 3.2 && !monster.isTailBroken) {
-          monster.tailHp -= finalDamage;
-          if (monster.tailHp <= 0) {
-            monster.isTailBroken = true;
-            syncMonsterPartBreakVisuals();
-            particleSystem.spawnHitSparks(tailWorldPos, 28, true);
-            audio.playPartBreak();
-            showBanner("🗡️【斷尾成功】轟龍尾巴已切斷！");
-          }
-        }
-
-        monster.hp = Math.max(0, monster.hp - finalDamage);
-        monster.staggerBuildUp += finalDamage;
-        monster.hitFlashTimer = isHeavy ? 0.18 : 0.11;
-
-        // 核心打擊反饋：Hitstop (卡肉感) + ScreenShake (震屏) + 火花粒子
-        triggerHitstop(isHeavy ? 0.09 : 0.05);
-        triggerScreenShake(isHeavy ? 0.65 : 0.35, 0.22);
-        triggerImpactFlash(isHeavy);
-        particleSystem.spawnHitSparks(hitCenter, isHeavy ? 24 : 14, isHeavy);
-        audio.playHit(isHeavy);
-
-        const dmgColor = hitWeakpoint ? "#ff3838" : (isHeavy ? "#ff9f1a" : "#ffd32a");
-        spawnFloatingText(hitCenter, hitWeakpoint ? `🎯 ${finalDamage}!!` : `${finalDamage}`, dmgColor);
-
-        // 硬直倒地 (Stagger)
-        if (monster.staggerBuildUp >= 200 && monster.state !== 'stagger' && monster.state !== 'roar') {
-          monster.staggerBuildUp = 0;
-          monster.state = 'stagger';
-          monster.timer = 2.8;
-          showBanner("💫 魔物大失衡・倒地！");
-        }
-
-        if (monster.hp <= 0) {
-          endGame(true);
-        }
-      }
-    }
-
-    /* ==============================================================
-       11. 魔物 AI 與行為狀態機 (Monster AI, Roar, Enrage)
-       ============================================================== */
-    function updateMonster(dt) {
-      if (monster.hp <= 0) {
-        monsterWarningRing.material.opacity = 0;
-        return;
-      }
-
-      animateMonsterVisual(dt);
-      updateEnrageAura(dt);
-      updateMonsterTelegraph(dt);
-
-      const bossStateTag = ui.bossStateTag;
-      const toHunter = tempVectors.toHunter.subVectors(hunterGroup.position, monsterGroup.position);
-      toHunter.y = 0;
-      const dist = toHunter.length();
-
-      // 檢查血量觸發憤怒咆哮 (Enrage Roar at 60% and 25% HP)
-      if ((monster.hp <= monster.maxHp * 0.65 && !monster.hasRoared60) ||
-          (monster.hp <= monster.maxHp * 0.28 && !monster.hasRoared25)) {
-        if (!monster.hasRoared60) monster.hasRoared60 = true;
-        else monster.hasRoared25 = true;
-
-        triggerMonsterRoar();
-        return;
-      }
-
-      // 怒氣計時
-      if (monster.isEnraged) {
-        monster.enrageTimer -= dt;
-        eyeLightL.intensity = 2.5;
-        eyeLightR.intensity = 2.5;
-        ui.enrageBadge.style.display = 'inline';
-        if (monster.enrageTimer <= 0) {
-          monster.isEnraged = false;
-          eyeLightL.intensity = 0;
-          eyeLightR.intensity = 0;
-          ui.enrageBadge.style.display = 'none';
-        }
-      }
-
-      const speedMult = monster.isEnraged ? 1.35 : 1.0;
-
-      // 狀態機處理
-      if (monster.state === 'roar') {
-        bossStateTag.innerText = '⚡ 狂暴龍吼！！';
-        bossStateTag.style.background = '#8e44ad';
-        monster.timer -= dt;
-        monsterGroup.rotation.x = Math.sin(monster.timer * 20) * 0.15; // 仰天長嘯動畫
-        if (monster.timer <= 0) {
-          monsterGroup.rotation.x = 0;
-          monster.state = 'chase';
-          monster.timer = 1.0;
-        }
-      }
-      else if (monster.state === 'chase') {
-        bossStateTag.innerText = monster.isEnraged ? '🔥 狂暴追擊中' : '巡弋逼近中';
-        bossStateTag.style.background = monster.isEnraged ? '#e74c3c' : '#e67e22';
-        monster.timer -= dt;
-
-        if (dist > 0.2) {
-          const targetAngle = Math.atan2(toHunter.x, toHunter.z);
-          monsterGroup.rotation.y = THREE.MathUtils.lerp(monsterGroup.rotation.y, targetAngle, 5 * dt);
-          monsterGroup.position.addScaledVector(toHunter.normalize(), 7.2 * speedMult * dt);
-        }
-
-        // 距離近時出迴旋甩尾，距離遠出龍車
-        if (dist < 7.2 && monster.timer <= 0.4) {
-          monster.state = 'telegraph_spin';
-          monster.timer = monster.isEnraged ? 0.45 : 0.7;
-          audio.playTelegraph('spin', monster.isEnraged);
-        } else if (monster.timer <= 0) {
-          monster.state = 'telegraph_charge';
-          monster.timer = monster.isEnraged ? 0.6 : 0.85;
-          monster.chargeDir.copy(toHunter.normalize());
-          audio.playTelegraph('charge', monster.isEnraged);
-        }
-      }
-      else if (monster.state === 'telegraph_charge') {
-        bossStateTag.innerText = '⚠️ 警示：蓄力龍車前踏！';
-        bossStateTag.style.background = '#c0392b';
-        monster.timer -= dt;
-        // 蓄力前搖後縮
-        monsterGroup.position.addScaledVector(monster.chargeDir, -2.8 * dt);
-        setMonsterEmissive((Math.floor(monster.timer * 18) % 2 === 0) ? 0xff0000 : 0x000000);
-
-        if (monster.timer <= 0) {
-          setMonsterEmissive(0x000000);
-          monster.state = 'charge';
-          monster.timer = 1.1;
-          monster.hasDealtDamage = false;
-          audio.playWingWhoosh(monster.isEnraged);
-        }
-      }
-      else if (monster.state === 'charge') {
-        bossStateTag.innerText = '💥 狂暴龍車突進！！';
-        bossStateTag.style.background = '#d63031';
-        monster.timer -= dt;
-        monsterGroup.position.addScaledVector(monster.chargeDir, 28 * speedMult * dt);
-
-        const currentDist = hunterGroup.position.distanceTo(monsterGroup.position);
-        if (!monster.hasDealtDamage && currentDist < 4.8 && player.invincible <= 0) {
-          monster.hasDealtDamage = true;
-          damagePlayer(32);
-        }
-
-        if (monster.timer <= 0) {
-          monster.state = 'cooldown';
-          monster.timer = monster.isEnraged ? 0.6 : 1.3;
-        }
-      }
-      else if (monster.state === 'telegraph_spin') {
-        bossStateTag.innerText = '⚠️ 警示：擺頭大甩尾！';
-        bossStateTag.style.background = '#e17055';
-        monster.timer -= dt;
-        setMonsterEmissive((Math.floor(monster.timer * 18) % 2 === 0) ? 0xf39c12 : 0x000000);
-
-        if (monster.timer <= 0) {
-          setMonsterEmissive(0x000000);
-          monster.state = 'spin';
-          monster.timer = 0.52;
-          monster.hasDealtDamage = false;
-          audio.playWingWhoosh(monster.isEnraged);
-        }
-      }
-      else if (monster.state === 'spin') {
-        bossStateTag.innerText = '🌪️ 360度大迴旋！';
-        monster.timer -= dt;
-        monsterGroup.rotation.y += (monster.isTailBroken ? 12 : 16) * dt;
-
-        // 若尾巴被切斷，甩尾半徑縮小
-        const spinRadius = monster.isTailBroken ? 5.8 : 8.2;
-        const currentDist = hunterGroup.position.distanceTo(monsterGroup.position);
-        if (!monster.hasDealtDamage && currentDist < spinRadius && player.invincible <= 0) {
-          monster.hasDealtDamage = true;
-          damagePlayer(monster.isTailBroken ? 18 : 26);
-        }
-
-        if (monster.timer <= 0) {
-          monster.state = 'cooldown';
-          monster.timer = monster.isEnraged ? 0.5 : 1.2;
-        }
-      }
-      else if (monster.state === 'cooldown') {
-        bossStateTag.innerText = '🟢 喘息破綻 (輸出大好時機)';
-        bossStateTag.style.background = '#27ae60';
-        monster.timer -= dt;
-        if (monster.timer <= 0) {
-          monster.state = 'chase';
-          monster.timer = 1.5;
-        }
-      }
-      else if (monster.state === 'stagger') {
-        bossStateTag.innerText = '💫 倒地翻肚 (全力輸出！)';
-        bossStateTag.style.background = '#0984e3';
-        monster.timer -= dt;
-        monsterGroup.rotation.z = Math.PI / 4.5;
-        if (monster.timer <= 0) {
-          monsterGroup.rotation.z = 0;
-          monster.state = 'chase';
-          monster.timer = 1.0;
-        }
-      }
-
-      if (monster.hitFlashTimer > 0) {
-        monster.hitFlashTimer = Math.max(0, monster.hitFlashTimer - dt);
-        setMonsterEmissive(0xffffff);
-      } else if (monster.state !== 'telegraph_charge' && monster.state !== 'telegraph_spin') {
-        setMonsterEmissive(monster.isEnraged ? 0x3a002d : 0x000000);
-      }
-
-      // 地圖邊界鎖定
-      monsterGroup.position.x = Math.max(-60, Math.min(60, monsterGroup.position.x));
-      monsterGroup.position.z = Math.max(-60, Math.min(60, monsterGroup.position.z));
-    }
-
-    function triggerMonsterRoar() {
-      monster.state = 'roar';
-      monster.timer = 1.6;
-      monster.isEnraged = true;
-      monster.enrageTimer = 18.0; // 憤怒 18 秒
-
-      if (player.isCharging) {
-        player.isCharging = false;
-        player.chargeTime = 0;
-        player.chargeLevel = 1;
-        player.state = 'idle';
-      }
-
-      audio.playRoar();
-      audio.playEnragePulse();
-      triggerScreenShake(0.8, 1.2);
-      particleSystem.spawnShockwave(monsterGroup.position, 28, 0xff7675);
-      showBanner("⚡ 魔物發出震天龍吼！進入憤怒狂暴狀態！");
-
-      // 若獵人距離近且未處於無敵翻滾，則被龍吼震退掩耳
-      const dist = hunterGroup.position.distanceTo(monsterGroup.position);
-      if (dist < 26 && player.invincible <= 0) {
-        player.state = 'ear_cover';
-        player.timer = 1.5;
-        spawnFloatingText(hunterGroup.position, "👂 摀耳硬直！", "#e74c3c");
-      }
-    }
-
-    function damagePlayer(amount) {
-      player.hp = Math.max(0, player.hp - amount);
-      audio.playHit(true);
-      triggerDamageFeedback(monsterGroup.position);
-      triggerScreenShake(0.85, 0.35);
-      spawnFloatingText(hunterGroup.position, `-${amount}`, "#ff4757");
-      if (player.hp <= 0) {
-        endGame(false);
-      }
-    }
-
-    /* ==============================================================
-       12. 相機系統 (Third-Person Chase / Target Lock-on / Free Look)
-       ============================================================== */
-    function lerpAngle(current, target, alpha) {
-      const delta = Math.atan2(Math.sin(target - current), Math.cos(target - current));
-      return current + delta * alpha;
-    }
-
-    function updateCamera(dt) {
-      if (isLockOn) {
-        // 鎖定模式：相機平滑朝向獵人與魔物連線
-        const toBoss = tempVectors.toBoss.subVectors(monsterGroup.position, hunterGroup.position);
-        toBoss.y = 0;
-        if (toBoss.lengthSq() > 0) {
-          const targetYaw = Math.atan2(toBoss.x, toBoss.z) + Math.PI;
-          cameraYaw = lerpAngle(cameraYaw, targetYaw, Math.min(1, 6 * dt));
-        }
-
-        // 更新螢幕鎖定準星位置
-        const reticle = document.getElementById('lockon-reticle');
-        const bossScreenPos = tempVectors.bossScreen.copy(monsterGroup.position);
-        bossScreenPos.y += 2.8;
-        bossScreenPos.project(camera);
-        const rx = (bossScreenPos.x * 0.5 + 0.5) * window.innerWidth;
-        const ry = (-(bossScreenPos.y * 0.5) + 0.5) * window.innerHeight;
-        reticle.style.left = `${rx}px`;
-        reticle.style.top = `${ry}px`;
-      }
-
-      // 相機球形座標計算
-      const lockDistance = hunterGroup.position.distanceTo(monsterGroup.position);
-      const camDist = isLockOn
-        ? THREE.MathUtils.clamp(12 + lockDistance * 0.22, 14, 24)
-        : 18;
-      const camY = Math.sin(cameraPitch) * camDist + 3.2;
-      const horizDist = Math.cos(cameraPitch) * camDist;
-
-      const targetCamPos = tempVectors.targetCamera.set(
-        hunterGroup.position.x + Math.sin(cameraYaw) * horizDist,
-        hunterGroup.position.y + camY,
-        hunterGroup.position.z + Math.cos(cameraYaw) * horizDist
-      );
-
-      // 螢幕震動偏移
-      if (screenShakeTimer > 0) {
-        screenShakeTimer -= dt;
-        const offset = screenShakeIntensity;
-        targetCamPos.x += (Math.random() - 0.5) * offset;
-        targetCamPos.y += (Math.random() - 0.5) * offset;
-        targetCamPos.z += (Math.random() - 0.5) * offset;
-      }
-
-      camera.position.lerp(targetCamPos, 0.12);
-
-      const lookTarget = tempVectors.lookTarget.copy(hunterGroup.position);
-      lookTarget.y += 2.0;
-      if (isLockOn) {
-        lookTarget.lerp(monsterGroup.position, 0.35);
-      }
-      camera.lookAt(lookTarget);
-    }
-
-    /* ==============================================================
-       13. HUD 儀表板更新
-       ============================================================== */
-    function updateHUD() {
-      const sharpness = getCurrentSharpness();
-      const snapshot = [
-        Math.ceil(player.hp),
-        Math.floor(player.stamina),
-        player.potions,
-        player.sharpness.toFixed(1),
-        Math.ceil(monster.hp),
-        sharpness.name,
-        gameStats.victories,
-        gameStats.defeats
-      ].join('|');
-      if (snapshot === lastHudSnapshot) return;
-      lastHudSnapshot = snapshot;
-
-      // 獵人 HP & 耐力
-      ui.hpBar.style.width = `${(player.hp / player.maxHp) * 100}%`;
-      ui.hpText.innerText = `${Math.ceil(player.hp)} / ${player.maxHp}`;
-      ui.staminaBar.style.width = `${(player.stamina / player.maxStamina) * 100}%`;
-      ui.staminaText.innerText = `${Math.floor(player.stamina)} / ${player.maxStamina}`;
-      ui.potionCount.innerText = player.potions;
-      if (ui.statsSummary) {
-        ui.statsSummary.innerText = `${gameStats.victories}勝 ${gameStats.defeats}敗`;
-      }
-
-      // 斬味
-      ui.sharpnessFill.style.width = `${player.sharpness}%`;
-      ui.sharpnessFill.style.backgroundColor = sharpness.color;
-      ui.sharpnessText.innerText = `${sharpness.name} (${sharpness.mult}x)`;
-      ui.sharpnessText.style.color = sharpness.color;
-
-      // Boss HP
-      const bossHpPercent = Math.max(0, (monster.hp / monster.maxHp) * 100);
-      ui.bossHpBar.style.width = `${bossHpPercent}%`;
-      ui.bossHpText.innerText = `${Math.ceil(monster.hp)} / ${monster.maxHp}`;
-    }
-
-    function endGame(victory) {
-      if (gameOver) return;
-      gameOver = true;
-      isPaused = false;
-      gameStats.hunts += 1;
-      if (victory) gameStats.victories += 1;
-      else gameStats.defeats += 1;
-      writeStats(saveStorage, gameStats);
-      lastHudSnapshot = '';
-      updateHUD();
-      resetInputState();
-      ui.pauseButton.style.display = 'none';
-      const overlay = document.getElementById('message-overlay');
-      const mainMsg = document.getElementById('main-msg');
-      overlay.style.display = 'flex';
-      if (victory) {
-        mainMsg.innerText = '🏆 QUEST COMPLETE! 狩獵達成！';
-        mainMsg.style.color = '#ffd32a';
-      } else {
-        mainMsg.innerText = '💀 QUEST FAILED 力盡倒下...';
-        mainMsg.style.color = '#ff4757';
-      }
-    }
-
-    /* ==============================================================
-       14. 主遊戲迴圈 (Game Loop & Animation)
-       ============================================================== */
-    const clock = new THREE.Clock();
-
-    function animate() {
-      requestAnimationFrame(animate);
-      const rawDt = Math.min(clock.getDelta(), 0.1);
-
-      // Hitstop 卡肉頓幀處理
-      if (hitstopTimer > 0 && !isPaused) {
-        hitstopTimer -= rawDt;
-        // 頓幀期間僅渲染相機，角色邏輯暫停，產生強大打擊停留感
-        renderer.render(scene, camera);
-        return;
-      }
-
-      if (!gameOver && !isPaused && pendingAssetLoads === 0) {
-        hunterMixer?.update(rawDt);
-        monsterMixer?.update(rawDt);
-        updatePlayer(rawDt);
-        updateMonster(rawDt);
-        updateBladeTrail(rawDt);
-        particleSystem.update(rawDt);
-        updateHUD();
-      }
-
-      updateCamera(rawDt);
-      renderer.render(scene, camera);
-    }
-
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, window.innerWidth < 900 ? 1.25 : 1.75));
-    });
-
-    animate();
-  </script>
+  <script type="module" src="./src/main.mjs"></script>
 </body>
 </html>
