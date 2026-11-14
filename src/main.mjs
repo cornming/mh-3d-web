@@ -25,6 +25,7 @@ import {
 import { readSettings, writeSettings } from './settings.mjs';
 import { ProceduralAudio } from './audio.mjs';
 import { ParticleManager } from './effects.mjs';
+import { batchMeshes } from './mesh-batching.mjs';
 import { createHud } from './ui/hud.mjs';
 import { createMenus } from './ui/menus.mjs';
 import { createTouchControls } from './ui/touch.mjs';
@@ -284,6 +285,10 @@ scene.add(backdrop);
     ridge.rotation.y = random() * Math.PI;
     backdrop.add(ridge);
   }
+  // 山稜共用同一個材質又不會動，接成一個網格
+  batchMeshes(THREE, backdrop, {
+    groupOf: (mesh) => (mesh.isInstancedMesh ? null : { key: 'ridges', space: backdrop })
+  });
 }
 
 // 空氣中的浮塵與花粉：被陽光照亮的細小粒子，增加景深與空氣感。
@@ -313,15 +318,21 @@ const motes = (() => {
 
 // 會擋住第三人稱鏡頭的外圍樹木與巨石：夾在鏡頭與獵人之間時淡出。
 const occluders = [];
-function registerOccluders(model) {
+const STATIC_BATCH = 'static';
+const OCCLUDER_NAME = /^(tree_trunk|tree_canopy|boulder_moss|boulder)_(\d+)/;
+/** 樹（樹幹＋樹冠）與巨石（石頭＋青苔）各自是一組遮蔽物，例如 tree_3、boulder_11；其他物件回傳 null。 */
+function occluderKeyOf(name) {
+  const match = OCCLUDER_NAME.exec(name);
+  return match ? `${match[1].startsWith('tree') ? 'tree' : 'boulder'}_${match[2]}` : null;
+}
+
+/** batches 是 batchMeshes 的結果：同一組遮蔽物的網格要一起淡出。 */
+function registerOccluders(batches) {
   const groups = new Map();
-  model.traverse((child) => {
-    if (!child.isMesh) return;
-    const match = /^(tree_trunk|tree_canopy|boulder_moss|boulder)_(\d+)/.exec(child.name);
-    if (!match) return;
-    const key = `${match[1].startsWith('tree') ? 'tree' : 'boulder'}_${match[2]}`;
+  batches.forEach(({ key, mesh }) => {
+    if (key === STATIC_BATCH) return;
     if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(child);
+    groups.get(key).push(mesh);
   });
   const box = new THREE.Box3();
   const size = new THREE.Vector3();
@@ -792,12 +803,62 @@ const prepareLoadedModel = (model, trackMaterials = false) => {
   return model;
 };
 
+/**
+ * 取出模型中會被程式單獨控制的節點（轉動、縮放、隱藏、換材質顏色），並記在 pinned 裡；
+ * 其餘零件不會各自移動，之後交給 mergeRigidParts 合併。
+ * 之後要操作新的節點時，記得也用 pick 取得，否則它會被併進別的網格而找不到。
+ */
+function createRigPicker(model) {
+  const pinned = new Set();
+  const pick = (name) => {
+    const node = model.getObjectByName(name);
+    if (node) pinned.add(node);
+    return node;
+  };
+  const pickSides = (prefix) => ['l', 'r'].map((side) => pick(`${prefix}_${side}`)).filter(Boolean);
+  return { pinned, pick, pickSides };
+}
+
+/**
+ * 合併角色模型中不會各自移動的零件：從零件往上找到最近的「會動的節點」，
+ * 同一個節點底下、同材質的零件接成一個網格，仍然跟著那個節點一起動。
+ */
+function mergeRigidParts(model, pinned, animations = []) {
+  // GLB 內建動畫會轉動的節點也要保留
+  animations.forEach((clip) => clip.tracks.forEach((track) => {
+    const { nodeName } = THREE.PropertyBinding.parseTrackName(track.name);
+    const node = model.getObjectByName(nodeName) || model.getObjectByProperty('uuid', nodeName);
+    if (node) pinned.add(node);
+  }));
+  batchMeshes(THREE, model, {
+    groupOf(mesh) {
+      if (pinned.has(mesh)) return null;
+      let space = mesh.parent;
+      while (space !== model && !pinned.has(space)) space = space.parent;
+      return { key: space.uuid, space };
+    }
+  });
+}
+
 const loadVisualAssets = () => {
   if (!assetLoader) return;
 
   assetLoader.load(assetUrl('hunter'), (gltf) => {
-    const model = prepareLoadedModel(gltf.scene);
+    const model = gltf.scene;
     model.name = 'hunterVisual';
+    const { pinned, pick, pickSides } = createRigPicker(model);
+    const chest = pick('chest');
+    const greatswordPivot = pick('weaponPivot');
+    const greatswordBlade = pick('weapon_blade');
+    hunterRig.chest = chest;
+    hunterRig.head = pick('head');
+    hunterRig.dualBlades = pickSides('dual_blade');
+    hunterRig.dualHands = pickSides('dual_hand');
+    hunterRig.legs = pickSides('leg');
+    hunterRig.shoulders = pickSides('shoulder');
+    alternateWeaponPivot = pick('dualWeaponPivot');
+    mergeRigidParts(model, pinned, gltf.animations);
+    prepareLoadedModel(model);
     hunterVisual = model;
     if (gltf.animations && gltf.animations.length > 0) {
       hunterMixer = new THREE.AnimationMixer(model);
@@ -810,19 +871,12 @@ const loadVisualAssets = () => {
     hideMeshes(proceduralHunterHead);
     proceduralHunterWeaponPivot.visible = false;
     proceduralHunterSword.visible = false;
-    hunterBody = model.getObjectByName('chest') || hunterBody;
-    blade = model.getObjectByName('weapon_blade') || blade;
-    weaponPivot = model.getObjectByName('weaponPivot') || weaponPivot;
-    hunterRig.chest = model.getObjectByName('chest');
-    hunterRig.head = model.getObjectByName('head');
+    hunterBody = chest || hunterBody;
+    blade = greatswordBlade || blade;
+    weaponPivot = greatswordPivot || weaponPivot;
     hunterRig.weapon = weaponPivot;
     hunterRig.blade = blade;
-    hunterRig.dualBlades = ['l', 'r'].map((side) => model.getObjectByName(`dual_blade_${side}`)).filter(Boolean);
-    hunterRig.dualHands = ['l', 'r'].map((side) => model.getObjectByName(`dual_hand_${side}`)).filter(Boolean);
-    alternateWeaponPivot = model.getObjectByName('dualWeaponPivot');
     if (alternateWeaponPivot) alternateWeaponPivot.visible = false;
-    hunterRig.legs = ['l', 'r'].map((side) => model.getObjectByName(`leg_${side}`)).filter(Boolean);
-    hunterRig.shoulders = ['l', 'r'].map((side) => model.getObjectByName(`shoulder_${side}`)).filter(Boolean);
     applyWeaponMode();
     markAssetLoaded('hunter');
   }, reportAssetProgress('hunter'), (error) => {
@@ -832,8 +886,23 @@ const loadVisualAssets = () => {
   });
 
   assetLoader.load(assetUrl('monster'), (gltf) => {
-    const model = prepareLoadedModel(gltf.scene, true);
+    const model = gltf.scene;
     model.name = 'monsterVisual';
+    const { pinned, pick, pickSides } = createRigPicker(model);
+    const head = pick('head');
+    const tail = pick('tail');
+    const hornL = pick('horn_l');
+    const hornR = pick('horn_r');
+    monsterRig.body = pick('body');
+    monsterRig.wings = pickSides('wing');
+    monsterRig.eyes = pickSides('eye');
+    // 斷尾時會被切離的尾段：第三節之後的尾節、尾鰭與尾刺
+    monsterRig.tailEndPieces = [
+      'tail_segment_2', 'tail_segment_3', 'tail_segment_4',
+      'tail_fin_2_l', 'tail_fin_2_r', 'tail_fin_3_l', 'tail_fin_3_r', 'tail_spike'
+    ].map((name) => pick(name)).filter(Boolean);
+    mergeRigidParts(model, pinned, gltf.animations);
+    prepareLoadedModel(model, true);
     monsterVisual = model;
     if (gltf.animations && gltf.animations.length > 0) {
       monsterMixer = new THREE.AnimationMixer(model);
@@ -846,21 +915,13 @@ const loadVisualAssets = () => {
     hideMeshes(proceduralMonsterHead);
     hideMeshes(proceduralMonsterTail);
     hideMeshes(proceduralMonsterWings);
-    headGroup = model.getObjectByName('head') || headGroup;
-    tailGroup = model.getObjectByName('tail') || tailGroup;
-    hornLeft = model.getObjectByName('horn_l') || hornLeft;
-    hornRight = model.getObjectByName('horn_r') || hornRight;
-    monsterRig.body = model.getObjectByName('body');
+    headGroup = head || headGroup;
+    tailGroup = tail || tailGroup;
+    hornLeft = hornL || hornLeft;
+    hornRight = hornR || hornRight;
     monsterRig.bodyBaseY = monsterRig.body ? monsterRig.body.position.y : 0;
     monsterRig.head = headGroup;
-    monsterRig.wings = ['l', 'r'].map((side) => model.getObjectByName(`wing_${side}`)).filter(Boolean);
     monsterRig.tail = tailGroup;
-    monsterRig.eyes = ['l', 'r'].map((side) => model.getObjectByName(`eye_${side}`)).filter(Boolean);
-    // 斷尾時會被切離的尾段：第三節之後的尾節、尾鰭與尾刺
-    monsterRig.tailEndPieces = [
-      'tail_segment_2', 'tail_segment_3', 'tail_segment_4',
-      'tail_fin_2_l', 'tail_fin_2_r', 'tail_fin_3_l', 'tail_fin_3_r', 'tail_spike'
-    ].map((name) => model.getObjectByName(name)).filter(Boolean);
     syncMonsterPartBreakVisuals();
     markAssetLoaded('monster');
   }, reportAssetProgress('monster'), (error) => {
@@ -870,8 +931,13 @@ const loadVisualAssets = () => {
   });
 
   assetLoader.load(assetUrl('hunting_ground'), (gltf) => {
-    const model = prepareLoadedModel(gltf.scene);
+    const model = gltf.scene;
     model.name = 'huntingGroundVisual';
+    // 獵場全是靜態物件：外圍會淡出的每棵樹、每顆巨石各自一組，其餘依材質合併
+    const batches = batchMeshes(THREE, model, {
+      groupOf: (mesh) => ({ key: occluderKeyOf(mesh.name) ?? STATIC_BATCH, space: model })
+    });
+    prepareLoadedModel(model);
     // Blender 獵場以原點為中心；遊戲的獵人與魔物戰鬥中線位於 z=5。
     model.position.set(ARENA.centerX, 0, ARENA.centerZ);
     // 靜態場景不需要每幀重算世界矩陣
@@ -880,7 +946,7 @@ const loadVisualAssets = () => {
       child.matrixAutoUpdate = false;
     });
     environmentVisual = model;
-    registerOccluders(model);
+    registerOccluders(batches);
     scene.add(model);
     clearing.visible = false;
     boneSite.visible = false;
