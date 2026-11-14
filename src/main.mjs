@@ -98,13 +98,13 @@ const menus = createMenus({
 });
 
 const assetLoader = THREE.GLTFLoader ? new THREE.GLTFLoader() : null;
-const assetVersion = 'yup-axis-20261110-1';
+const assetVersion = 'jpeg-textures-20261114-1';
 const assetUrl = (name) => `${new URL(`../assets/models/${name}.glb`, import.meta.url).href}?v=${assetVersion}`;
 // 伺服器未提供 Content-Length 時，用檔案的概略大小估算載入進度。
 const assetCatalog = {
-  hunter: { label: '獵人', bytes: 1632000, progress: 0 },
-  monster: { label: GAME.monsterName, bytes: 1583000, progress: 0 },
-  hunting_ground: { label: '獵場', bytes: 2757000, progress: 0 }
+  hunter: { label: '獵人', bytes: 836000, progress: 0 },
+  monster: { label: GAME.monsterName, bytes: 643000, progress: 0 },
+  hunting_ground: { label: '獵場', bytes: 1560000, progress: 0 }
 };
 let pendingAssetLoads = assetLoader ? Object.keys(assetCatalog).length : 0;
 
