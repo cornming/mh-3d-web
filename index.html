@@ -2,7 +2,7 @@
 <html lang="zh-Hant-TW">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#0f0c08">
   <meta name="description" content="以 Three.js 製作的原創 3D 狩獵動作 Web 原型：在蒼林獵場討伐大型甲獸。">
   <title>蒼林狩獵誌｜3D 狩獵動作原型</title>
@@ -206,7 +206,7 @@
 
     <div class="hud__bottom">
       <aside class="hints" id="hints" aria-label="操作提示">
-        <ul class="hints__list">
+        <ul class="hints__list" id="hints-list">
           <li><span class="keys"><kbd class="keycap">W</kbd><kbd class="keycap">A</kbd><kbd class="keycap">S</kbd><kbd class="keycap">D</kbd></span><span>移動</span></li>
           <li><span class="keys"><kbd class="keycap keycap--wide">Space</kbd></span><span>翻滾迴避</span></li>
           <li><span class="keys"><kbd class="keycap">J</kbd><kbd class="keycap keycap--wide">左鍵</kbd></span><span>斬擊連段</span></li>
@@ -214,7 +214,7 @@
           <li><span class="keys"><kbd class="keycap">F</kbd></span><span>鎖定目標</span></li>
           <li><span class="keys"><kbd class="keycap keycap--wide">右鍵</kbd></span><span>拖曳旋轉視角</span></li>
         </ul>
-        <div class="hints__toggle"><kbd class="keycap">H</kbd><span id="hints-toggle-label">收合提示</span></div>
+        <button id="hints-toggle" class="hints__toggle" type="button" aria-expanded="true" aria-controls="hints-list"><kbd class="keycap">H</kbd><span id="hints-toggle-label">收合提示</span></button>
       </aside>
 
       <section class="items" aria-label="道具">
@@ -491,7 +491,10 @@
     </div>
   </div>
 
-  <div id="runtime-error" role="alert" aria-live="assertive" hidden></div>
+  <div id="runtime-error" role="alert" aria-live="assertive" hidden>
+    <span id="runtime-error-message"></span>
+    <button id="runtime-error-close" class="runtime-error__close" type="button" aria-label="關閉錯誤訊息">關閉</button>
+  </div>
 
   <!-- 引入 Three.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous"></script>

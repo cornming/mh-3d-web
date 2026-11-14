@@ -14,6 +14,16 @@ import {
   writeRecords
 } from "../src/save-system.mjs";
 import { DEFAULT_SETTINGS, normalizeSettings, readSettings, writeSettings } from "../src/settings.mjs";
+import {
+  ARENA,
+  ASSET_VERSION,
+  STATIC_OBSTACLES,
+  WEAPON_PROFILES,
+  assetUrl,
+  clampToArena,
+  lerpAngle,
+  resolveStaticCollisions
+} from "../src/constants.mjs";
 
 function memoryStorage() {
   const map = new Map();
@@ -78,15 +88,55 @@ test("records only improve and report a new best time", () => {
   assert.deepEqual(readRecords(memoryStorage()), { bestTimeSeconds: null, bestRank: null });
 });
 
-test("settings are clamped, typed and persisted", () => {
+test("settings reject non-numeric coercion and persist normalized values", () => {
   const settings = normalizeSettings({ masterVolume: 9, hudScale: 0.1, graphicsQuality: "ultra", showMinimap: "yes" });
   assert.equal(settings.masterVolume, 1);
   assert.equal(settings.hudScale, 0.8);
   assert.equal(settings.graphicsQuality, DEFAULT_SETTINGS.graphicsQuality);
   assert.equal(settings.showMinimap, true);
+
+  // 空字串、布林值、文字與非有限數字不該被 Number(...) 強制轉型覆蓋預設值
+  const coerced = normalizeSettings({
+    masterVolume: "",
+    cameraSensitivity: false,
+    cameraShake: true,
+    hudScale: "0.9",
+    masterVolumeNaN: NaN
+  });
+  assert.equal(coerced.masterVolume, DEFAULT_SETTINGS.masterVolume);
+  assert.equal(coerced.cameraSensitivity, DEFAULT_SETTINGS.cameraSensitivity);
+  assert.equal(coerced.cameraShake, DEFAULT_SETTINGS.cameraShake);
+  assert.equal(coerced.hudScale, DEFAULT_SETTINGS.hudScale);
+
   const storage = memoryStorage();
   writeSettings(storage, { ...settings, showMinimap: false, graphicsQuality: "low" });
   assert.equal(readSettings(storage).showMinimap, false);
   assert.equal(readSettings(storage).graphicsQuality, "low");
   assert.deepEqual(readSettings(null), { ...DEFAULT_SETTINGS });
+});
+
+test("constants expose valid weapon profiles, versioned asset URLs, and arena math", () => {
+  assert.ok(WEAPON_PROFILES.greatsword.strikeRadius > 0);
+  assert.ok(WEAPON_PROFILES.dualblades.strikeRadius > 0);
+  const url = assetUrl("hunter");
+  assert.match(url, new RegExp(`assets/models/hunter\\.glb\\?v=${ASSET_VERSION}$`));
+
+  // lerpAngle takes the shortest path across PI / -PI wraparound
+  const wrapped = lerpAngle(Math.PI - 0.1, -Math.PI + 0.1, 0.5);
+  assert.ok(Math.abs(Math.sin(wrapped)) < 1e-6 && Math.cos(wrapped) < 0);
+
+  // clampToArena pulls out-of-bounds positions onto boundary circle centered on ARENA
+  const inside = { x: ARENA.centerX + 2, z: ARENA.centerZ };
+  assert.equal(clampToArena(inside, ARENA.radius), false);
+
+  const outside = { x: ARENA.centerX + ARENA.radius + 10, z: ARENA.centerZ };
+  assert.equal(clampToArena(outside, ARENA.radius), true);
+  assert.ok(Math.abs(outside.x - (ARENA.centerX + ARENA.radius)) < 1e-6);
+
+  // resolveStaticCollisions pushes hunter out of ancient bone site obstacle
+  const boneObs = STATIC_OBSTACLES[0];
+  const colliding = { x: boneObs.ax + 0.2, z: boneObs.az + 1.0 };
+  resolveStaticCollisions(colliding, 0.6);
+  const distFromSpine = Math.abs(colliding.x - boneObs.ax);
+  assert.ok(distFromSpine >= boneObs.radius + 0.6 - 1e-6);
 });

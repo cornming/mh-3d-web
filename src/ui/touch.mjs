@@ -15,15 +15,21 @@ export function createTouchControls({ surface, isHunting, onAction, onActionEnd,
   let origin = { x: 0, y: 0 };
   let lastLook = { x: 0, y: 0 };
 
-  const stickRadius = () => STICK_RADIUS_REM * parseFloat(getComputedStyle(document.documentElement).fontSize);
+  let remPx = 16;
+  const readRem = () => {
+    const parsed = parseFloat(getComputedStyle(document.documentElement).fontSize);
+    remPx = Number.isFinite(parsed) && parsed > 0 ? parsed : 16;
+    return remPx;
+  };
+  readRem();
 
   function placeStick(x, y) {
     stick.style.transform = `translate(${x}px, ${y}px)`;
   }
 
   function restStick() {
-    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
-    placeStick(rem * 7.4, window.innerHeight - rem * 8.2);
+    readRem();
+    placeStick(remPx * 7.4, window.innerHeight - remPx * 8.2);
     knob.style.transform = '';
     stick.classList.remove('is-active');
   }
@@ -51,7 +57,7 @@ export function createTouchControls({ surface, isHunting, onAction, onActionEnd,
 
   window.addEventListener('pointermove', (event) => {
     if (event.pointerId === stickPointer) {
-      const radius = stickRadius();
+      const radius = STICK_RADIUS_REM * remPx;
       let dx = event.clientX - origin.x;
       let dy = event.clientY - origin.y;
       const length = Math.hypot(dx, dy);
@@ -103,12 +109,17 @@ export function createTouchControls({ surface, isHunting, onAction, onActionEnd,
 
   window.addEventListener('resize', () => {
     if (stickPointer === null) restStick();
+    else readRem();
   });
   restStick();
 
   return {
     /** 類比移動向量：x 向右為正、y 向下為正，長度不超過 1。 */
     move,
+    refreshLayout() {
+      if (stickPointer === null) restStick();
+      else readRem();
+    },
     reset() {
       releaseStick();
       lookPointer = null;

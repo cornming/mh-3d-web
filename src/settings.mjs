@@ -33,9 +33,9 @@ export function normalizeSettings(value = {}) {
   const source = value && typeof value === "object" ? value : {};
   const settings = { ...DEFAULT_SETTINGS };
   for (const [key, [min, max]] of Object.entries(NUMBER_RANGES)) {
-    const number = Number(source[key]);
-    if (source[key] !== null && source[key] !== undefined && Number.isFinite(number)) {
-      settings[key] = Math.min(max, Math.max(min, number));
+    const raw = source[key];
+    if (typeof raw === "number" && Number.isFinite(raw)) {
+      settings[key] = Math.min(max, Math.max(min, raw));
     }
   }
   for (const key of BOOLEAN_KEYS) {

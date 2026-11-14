@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   calculateAttackDamage,
+  closestPointOnSegment2DInto,
   getChargeLevel,
   getSharpnessLevel,
   isWithinRange,
@@ -12,6 +13,7 @@ import {
   STATS_KEY,
   createSaveState,
   normalizeSaveState,
+  readRecords,
   readSave,
   readStats,
   removeSave,
@@ -56,6 +58,17 @@ test("range checks reject negative distances", () => {
   assert.equal(isWithinRange(-1, 5), false);
 });
 
+test("closestPointOnSegment2DInto mutates and returns the provided buffer", () => {
+  const buf = { t: -1, x: -1, z: -1, distance: -1 };
+  const ret = closestPointOnSegment2DInto(5, 4, 0, 0, 10, 0, buf);
+  assert.equal(ret, buf);
+  assert.deepEqual(buf, { t: 0.5, x: 5, z: 0, distance: 4 });
+
+  // Degenerate zero-length segment
+  closestPointOnSegment2DInto(3, 4, 0, 0, 0, 0, buf);
+  assert.deepEqual(buf, { t: 0, x: 0, z: 0, distance: 5 });
+});
+
 test("save state round-trips combat progress and clamps unsafe values", () => {
   const storage = new Map();
   storage.getItem = storage.get.bind(storage);
@@ -98,4 +111,19 @@ test("save state round-trips combat progress and clamps unsafe values", () => {
   assert.equal(unsafe.camera.pitch, 1.2);
   assert.equal(removeSave(storage), true);
   assert.equal(readSave(storage), null);
+});
+
+test("save system tolerates corrupted JSON and wrong-version payloads", () => {
+  const storage = new Map();
+  storage.getItem = storage.get.bind(storage);
+  storage.setItem = (key, value) => storage.set(key, value);
+  storage.removeItem = storage.delete.bind(storage);
+
+  storage.setItem(SAVE_KEY, "{not valid json");
+  storage.setItem(STATS_KEY, "null");
+  assert.equal(readSave(storage), null);
+  assert.deepEqual(readStats(storage), { hunts: 0, victories: 0, defeats: 0 });
+  assert.deepEqual(readRecords(storage), { bestTimeSeconds: null, bestRank: null });
+  assert.equal(normalizeSaveState({ version: 999 }), null);
+  assert.equal(normalizeSaveState(null), null);
 });
