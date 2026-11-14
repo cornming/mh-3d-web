@@ -330,6 +330,10 @@ def export(filepath):
         export_yup=False,
         export_animations=True,
         export_materials="EXPORT",
+        # 貼圖都是 256×256 的雜訊紋理，PNG 幾乎壓不動（三個模型的貼圖合計約 3.6 MB）。
+        # 改存 JPEG 後檔案小很多，畫面上看不出差別；JPEG 是 glTF 標準格式，不需要額外的擴充。
+        export_image_format="JPEG",
+        export_image_quality=90,
     )
 
 

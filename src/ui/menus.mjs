@@ -69,6 +69,36 @@ export function createMenus({ audio, settings, onCommand, onSettingsChange }) {
   const openScreens = () => Object.values(screens).filter((screen) => screen.classList.contains('is-open'));
   const topLayer = () => dialogStack[dialogStack.length - 1] || openScreens().pop() || null;
 
+  /** 只保留最上層互動畫面／對話框給螢幕閱讀器與鍵盤焦點存取，其餘層標記 inert。 */
+  function syncLayerInteractivity() {
+    const active = topLayer();
+    [...Object.values(screens), ...Object.values(dialogs)].forEach((layer) => {
+      if (!layer) return;
+      const visible = layer.classList.contains('is-open');
+      const interactive = visible && layer === active;
+      layer.inert = !interactive;
+      layer.setAttribute('aria-hidden', String(!visible));
+    });
+  }
+
+  /** 以安全 DOM 節點組出含粗體與標記的統計文案，不使用 innerHTML。 */
+  function appendSegments(container, groups) {
+    const nodes = groups.map((segments) => {
+      const span = document.createElement('span');
+      segments.forEach((seg) => {
+        if (typeof seg === 'string') {
+          span.appendChild(document.createTextNode(seg));
+        } else {
+          const elNode = document.createElement(seg.tag);
+          elNode.textContent = seg.text;
+          span.appendChild(elNode);
+        }
+      });
+      return span;
+    });
+    container.replaceChildren(...nodes);
+  }
+
   function focusFirst(container) {
     const preferred = container.querySelector('[data-autofocus]:not(:disabled)')
       || container.querySelector('.btn--primary:not(:disabled)')
@@ -82,20 +112,23 @@ export function createMenus({ audio, settings, onCommand, onSettingsChange }) {
     const screen = screens[name];
     if (!screen || screen.classList.contains('is-open')) return;
     screen.classList.add('is-open');
+    syncLayerInteractivity();
     if (name !== 'loading') focusFirst(screen);
   }
 
   function closeScreen(name) {
     screens[name]?.classList.remove('is-open');
+    syncLayerInteractivity();
   }
 
   function showOnly(name) {
     Object.keys(screens).forEach((key) => {
-      if (key === name) openScreen(key);
-      else closeScreen(key);
+      screens[key]?.classList.toggle('is-open', key === name);
     });
     while (dialogStack.length) closeDialog(false);
-    if (!name) document.activeElement?.blur?.();
+    syncLayerInteractivity();
+    if (name && name !== 'loading' && screens[name]) focusFirst(screens[name]);
+    else if (!name) document.activeElement?.blur?.();
   }
 
   function openDialog(name) {
@@ -104,6 +137,7 @@ export function createMenus({ audio, settings, onCommand, onSettingsChange }) {
     returnFocus.set(dialog, document.activeElement);
     dialogStack.push(dialog);
     dialog.classList.add('is-open');
+    syncLayerInteractivity();
     focusFirst(dialog);
   }
 
@@ -116,10 +150,15 @@ export function createMenus({ audio, settings, onCommand, onSettingsChange }) {
       confirmResolver = null;
       resolve(false);
     }
+    syncLayerInteractivity();
     if (playSound) audio.playUiBack();
     const previous = returnFocus.get(dialog);
     returnFocus.delete(dialog);
-    if (previous && document.contains(previous)) previous.focus({ preventScroll: true });
+    if (previous && document.contains(previous) && !previous.closest('[inert]')) {
+      previous.focus({ preventScroll: true });
+    } else if (topLayer()) {
+      focusFirst(topLayer());
+    }
   }
 
   function confirm({ title, text, confirmLabel = '確定' }) {
@@ -231,6 +270,24 @@ export function createMenus({ audio, settings, onCommand, onSettingsChange }) {
       return true;
     }
 
+    // 在單選群組（武器卡片、畫質分段）上按左右鍵時，直接切換並選取該項目
+    const activeRadio = document.activeElement?.closest?.('[role="radio"]');
+    const radioGroup = activeRadio?.closest?.('[role="radiogroup"]');
+    if (radioGroup && (key === 'ArrowRight' || key === 'ArrowLeft')) {
+      const radios = Array.from(radioGroup.querySelectorAll('[role="radio"]:not(:disabled)'));
+      if (radios.length > 1) {
+        event.preventDefault();
+        const idx = radios.indexOf(activeRadio);
+        const step = key === 'ArrowRight' ? 1 : -1;
+        const target = radios[(idx + step + radios.length) % radios.length];
+        if (target.dataset.weaponChoice) setWeaponChoice(target.dataset.weaponChoice);
+        else if (target.dataset.settingOption) updateSetting(target.dataset.settingOption, target.dataset.value);
+        target.focus({ preventScroll: false });
+        audio.playUiMove();
+        return true;
+      }
+    }
+
     const lower = key.toLowerCase();
     const next = key === 'ArrowDown' || lower === 's' || (key === 'ArrowRight' && !isRange);
     const previous = key === 'ArrowUp' || lower === 'w' || (key === 'ArrowLeft' && !isRange);
@@ -268,7 +325,9 @@ export function createMenus({ audio, settings, onCommand, onSettingsChange }) {
   function setWeaponChoice(mode) {
     weaponChoice = mode === 'dualblades' ? 'dualblades' : 'greatsword';
     document.querySelectorAll('[data-weapon-choice]').forEach((card) => {
-      card.setAttribute('aria-checked', String(card.dataset.weaponChoice === weaponChoice));
+      const checked = card.dataset.weaponChoice === weaponChoice;
+      card.setAttribute('aria-checked', String(checked));
+      card.tabIndex = checked ? 0 : -1;
     });
   }
 
@@ -290,7 +349,9 @@ export function createMenus({ audio, settings, onCommand, onSettingsChange }) {
       }
     });
     document.querySelectorAll('[data-setting-option]').forEach((button) => {
-      button.setAttribute('aria-checked', String(settings[button.dataset.settingOption] === button.dataset.value));
+      const checked = settings[button.dataset.settingOption] === button.dataset.value;
+      button.setAttribute('aria-checked', String(checked));
+      button.tabIndex = checked ? 0 : -1;
     });
   }
 
@@ -324,12 +385,16 @@ export function createMenus({ audio, settings, onCommand, onSettingsChange }) {
   function setTitleState({ hasSave, saveSummary, stats, records }) {
     el.titleContinue.disabled = !hasSave;
     el.titleContinueNote.textContent = hasSave ? saveSummary : '尚無存檔';
-    const parts = [`狩獵紀錄　<b>${stats.victories}</b> 勝 <b>${stats.defeats}</b> 敗`];
+    const groups = [
+      ['狩獵紀錄　', { tag: 'b', text: String(stats.victories) }, ' 勝 ', { tag: 'b', text: String(stats.defeats) }, ' 敗']
+    ];
     if (records.bestTimeSeconds !== null) {
-      parts.push(`最快討伐　<b>${formatQuestClock(records.bestTimeSeconds)}</b>`);
+      groups.push(['最快討伐　', { tag: 'b', text: formatQuestClock(records.bestTimeSeconds) }]);
     }
-    if (records.bestRank) parts.push(`最高評價　<b>${records.bestRank}</b>`);
-    el.titleRecord.innerHTML = parts.map((part) => `<span>${part}</span>`).join('');
+    if (records.bestRank) {
+      groups.push(['最高評價　', { tag: 'b', text: String(records.bestRank) }]);
+    }
+    appendSegments(el.titleRecord, groups);
     el.settingsSaveNote.textContent = hasSave ? saveSummary : '尚無存檔';
   }
 
@@ -343,7 +408,7 @@ export function createMenus({ audio, settings, onCommand, onSettingsChange }) {
     el.saveStatus.textContent = message;
   }
 
-  function showResult({ victory, reason, rank, rows, recordHtml }) {
+  function showResult({ victory, reason, rank, rows, recordItems, isNewBestTime = false }) {
     el.result.dataset.outcome = victory ? 'clear' : 'failed';
     el.resultSub.textContent = victory ? 'QUEST COMPLETE' : 'QUEST FAILED';
     el.resultTitle.textContent = victory ? '任務達成' : '任務失敗';
@@ -366,12 +431,32 @@ export function createMenus({ audio, settings, onCommand, onSettingsChange }) {
       row.append(term, detail);
       return row;
     }));
-    el.resultRecord.innerHTML = recordHtml;
+
+    el.resultRecord.replaceChildren();
+    recordItems.forEach((segments, idx) => {
+      if (idx > 0) el.resultRecord.appendChild(document.createTextNode('　'));
+      segments.forEach((seg) => {
+        if (typeof seg === 'string') el.resultRecord.appendChild(document.createTextNode(seg));
+        else {
+          const node = document.createElement(seg.tag);
+          node.textContent = seg.text;
+          el.resultRecord.appendChild(node);
+        }
+      });
+    });
+    if (isNewBestTime) {
+      const em = document.createElement('em');
+      em.textContent = '刷新紀錄';
+      el.resultRecord.appendChild(em);
+    }
+
     showOnly('result');
   }
 
   el.loadingTip.textContent = LOADING_TIPS[Math.floor(Math.random() * LOADING_TIPS.length)];
+  setWeaponChoice(weaponChoice);
   syncSettingsForm();
+  syncLayerInteractivity();
 
   return {
     openScreen,
@@ -381,6 +466,7 @@ export function createMenus({ audio, settings, onCommand, onSettingsChange }) {
     confirm,
     handleKey,
     isOpen: () => Boolean(topLayer()),
+    hasDialog: () => dialogStack.length > 0,
     setLoading,
     setTitleState,
     setPauseState,

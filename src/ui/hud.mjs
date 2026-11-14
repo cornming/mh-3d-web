@@ -96,6 +96,7 @@ export function createHud({ arena }) {
     partTail: $('part-tail'),
     questClock: $('quest-clock'),
     questTime: $('quest-time'),
+    minimap: $('minimap'),
     minimapCanvas: $('minimap-canvas'),
     minimapNorth: $('minimap-north'),
     feed: $('feed'),
@@ -107,6 +108,7 @@ export function createHud({ arena }) {
     charge: $('charge-gauge'),
     chargePips: Array.from(document.querySelectorAll('#charge-gauge .charge__pips i')),
     hints: $('hints'),
+    hintsToggle: $('hints-toggle'),
     hintsLabel: $('hints-toggle-label'),
     slotPotion: $('slot-potion'),
     slotWhetstone: $('slot-whetstone'),
@@ -141,8 +143,29 @@ export function createHud({ arena }) {
   let showDamageNumbers = true;
   let calloutTimer = 0;
   let minimapTick = 0;
+  const transientTimers = new Set();
+  const trackTimer = (callback, ms) => {
+    const id = setTimeout(() => {
+      transientTimers.delete(id);
+      callback();
+    }, ms);
+    transientTimers.add(id);
+    return id;
+  };
   const landmarks = buildLandmarks();
   const mapContext = el.minimapCanvas.getContext('2d');
+  let cachedGradientSize = 0;
+  let cachedGroundGradient = null;
+  const getGroundGradient = (size) => {
+    if (cachedGroundGradient && cachedGradientSize === size) return cachedGroundGradient;
+    const half = size / 2;
+    const gradient = mapContext.createRadialGradient(half, half, half * 0.1, half, half, half);
+    gradient.addColorStop(0, 'rgba(74, 92, 58, 0.92)');
+    gradient.addColorStop(1, 'rgba(24, 33, 22, 0.94)');
+    cachedGradientSize = size;
+    cachedGroundGradient = gradient;
+    return gradient;
+  };
 
   function render(state) {
     // --- 獵人體力：填色即時反應，淡色殘影延遲收攏，呈現「剛被削掉多少」 ---
@@ -239,7 +262,9 @@ export function createHud({ arena }) {
     if (state.threat.active) setData(el.threat, 'threatKind', 'kind', state.threat.kind);
 
     minimapTick = (minimapTick + 1) % 3;
-    if (minimapTick === 0 && document.body.dataset.minimap !== 'false') drawMinimap(state.radar);
+    if (minimapTick === 0 && document.body.dataset.minimap !== 'false' && el.minimap?.offsetParent !== null) {
+      drawMinimap(state.radar);
+    }
   }
 
   function placeMarker(element, key, marker) {
@@ -273,10 +298,7 @@ export function createHud({ arena }) {
     ctx.arc(half, half, half, 0, Math.PI * 2);
     ctx.clip();
 
-    const ground = ctx.createRadialGradient(half, half, half * 0.1, half, half, half);
-    ground.addColorStop(0, 'rgba(74, 92, 58, 0.92)');
-    ground.addColorStop(1, 'rgba(24, 33, 22, 0.94)');
-    ctx.fillStyle = ground;
+    ctx.fillStyle = getGroundGradient(size);
     ctx.fillRect(0, 0, size, size);
 
     const [cx, cz] = project(arena.centerX, arena.centerZ);
@@ -395,9 +417,9 @@ export function createHud({ arena }) {
     label.textContent = text;
     item.appendChild(label);
     el.feed.appendChild(item);
-    setTimeout(() => {
+    trackTimer(() => {
       item.classList.add('is-leaving');
-      setTimeout(() => item.remove(), 360);
+      trackTimer(() => item.remove(), 360);
     }, duration);
   }
 
@@ -422,10 +444,12 @@ export function createHud({ arena }) {
     item.style.top = `${y.toFixed(0)}px`;
     item.style.setProperty('--dx', `${((Math.random() - 0.5) * 3).toFixed(2)}rem`);
     el.damageLayer.appendChild(item);
-    setTimeout(() => item.remove(), 1000);
+    trackTimer(() => item.remove(), 1000);
   }
 
   function clearTransient() {
+    transientTimers.forEach((id) => clearTimeout(id));
+    transientTimers.clear();
     el.feed.replaceChildren();
     el.damageLayer.replaceChildren();
     el.callout.classList.remove('is-visible');
@@ -476,6 +500,7 @@ export function createHud({ arena }) {
     setHintsCollapsed(collapsed) {
       el.hints.dataset.collapsed = String(collapsed);
       el.hintsLabel.textContent = collapsed ? '操作提示' : '收合提示';
+      el.hintsToggle?.setAttribute('aria-expanded', String(!collapsed));
     },
     areHintsCollapsed() {
       return el.hints.dataset.collapsed === 'true';

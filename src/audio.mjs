@@ -6,10 +6,14 @@ export class ProceduralAudio {
   constructor({ onStatus } = {}) {
     this.ctx = null;
     this.unavailable = false;
+    this.resumeNotified = false;
     this.outputNode = null;
     this.masterGain = null;
     this.masterVolume = 0.8;
     this.ambientStarted = false;
+    this.paused = false;
+    this.noiseCache = new Map();
+    this.birdTimer = 0;
     this.onStatus = typeof onStatus === 'function' ? onStatus : () => {};
   }
   init() {
@@ -52,10 +56,16 @@ export class ProceduralAudio {
     }
     if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume().catch(() => {
-        this.onStatus('瀏覽器拒絕啟用音效，遊戲仍可繼續。');
+        if (!this.resumeNotified) {
+          this.resumeNotified = true;
+          this.onStatus('瀏覽器拒絕啟用音效，遊戲仍可繼續。');
+        }
       });
     }
     this.startAmbient();
+  }
+  setPaused(paused) {
+    this.paused = Boolean(paused);
   }
   setMasterVolume(volume) {
     const normalized = Math.min(1, Math.max(0, Number.isFinite(volume) ? volume : 0.8));
@@ -80,12 +90,16 @@ export class ProceduralAudio {
     return impulse;
   }
   noiseBuffer(duration) {
+    const key = Math.round(duration * 1000);
+    const cached = this.noiseCache.get(key);
+    if (cached) return cached;
     const length = Math.max(1, Math.floor(this.ctx.sampleRate * duration));
     const buffer = this.ctx.createBuffer(1, length, this.ctx.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < length; i++) {
       data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (length * 0.22));
     }
+    this.noiseCache.set(key, buffer);
     return buffer;
   }
   startAmbient() {
@@ -157,9 +171,12 @@ export class ProceduralAudio {
   }
   scheduleBirdCall() {
     if (!this.ctx) return;
+    clearTimeout(this.birdTimer);
     const delay = 4200 + Math.random() * 7800;
     this.birdTimer = setTimeout(() => {
-      if (this.ctx && this.ctx.state === 'running' && !document.hidden) this.playBirdCall();
+      if (this.ctx && this.ctx.state === 'running' && !this.paused && !document.hidden) {
+        this.playBirdCall();
+      }
       this.scheduleBirdCall();
     }, delay);
   }

@@ -73,6 +73,7 @@ mh-3d-web/
 ├─ src/ui/touch.mjs            # 觸控搖桿與動作鍵
 ├─ src/audio.mjs               # 程序化音效
 ├─ src/effects.mjs             # 火花與震波粒子
+├─ src/mesh-batching.mjs       # 載入時合併靜態網格，減少 draw call
 ├─ src/game-rules.mjs          # 可獨立測試的戰鬥規則、命中判定與評價
 ├─ src/save-system.mjs         # 存檔、戰績與最佳紀錄
 ├─ src/settings.mjs            # 設定的正規化與保存
@@ -90,7 +91,12 @@ mh-3d-web/
 & 'C:\Program Files\Blender Foundation\Blender 5.2\blender.exe' --background --python tools\generate_assets.py
 ```
 
-也可以用 `pip install bpy==5.2.3` 後直接以 Python 執行該腳本。`weaponPivot`、`dualWeaponPivot`、`weapon_blade`、`head`、`tail`、`horn_l`、`horn_r`、`tail_segment_*` 等節點名稱是遊戲整合的一部分，修改模型時請保留；重新產生後請更新 `src/main.mjs` 的 `assetVersion`。
+也可以用 `pip install bpy==5.2.3` 後直接以 Python 執行該腳本。`weaponPivot`、`dualWeaponPivot`、`weapon_blade`、`head`、`tail`、`horn_l`、`horn_r`、`tail_segment_*` 等節點名稱是遊戲整合的一部分，修改模型時請保留；重新產生後請更新 `src/main.mjs` 的 `assetVersion`，檔案大小變動較多時一併更新 `assetCatalog` 的 `bytes`（載入進度條用的概略大小）。
+
+- **貼圖格式**：模型內嵌的貼圖是 256×256 的程序化紋理，匯出時存成 JPEG（品質 90）。同樣的內容存 PNG 時，三個 GLB 合計約 6.0 MB，改用 JPEG 後約 3.0 MB（GitHub Pages 以 gzip 傳輸，實際下載量約從 4.4 MB 降到 1.3 MB）。
+- **零件合併**：模型由許多小零件組成（獵人 72 個、魔物 70 個、獵場 266 個網格）。載入時 `src/mesh-batching.mjs` 會把「共用材質、彼此不會相對移動」的零件接成一個網格，每幀 draw call 約從 720 次降到 210 次，畫面不變。
+  - 獵人與魔物：程式會單獨轉動、隱藏或變色的節點，在 `src/main.mjs` 以 `createRigPicker` 的 `pick('節點名稱')` 取得，這些節點會原樣保留；其餘零件併入最近的上層節點。之後若要用程式操作新的節點，同樣要用 `pick` 取得，否則它會被併掉而找不到。
+  - 獵場：外圍會淡出的每棵樹、每顆巨石各自一組（名稱符合 `tree_trunk_N`、`tree_canopy_N`、`boulder_N`、`boulder_moss_N`），其餘依材質合併。
 
 ## 技術備註
 

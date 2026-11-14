@@ -4,11 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "for f in src/*.mjs src/ui/*.mjs; do node --check \"$f\" || exit 1; done",
+    "check": "node -e \"const {readdirSync,statSync}=require('fs'),{execFileSync}=require('child_process');const walk=(d)=>readdirSync(d).flatMap((f)=>statSync(d+'/'+f).isDirectory()?walk(d+'/'+f):(f.endsWith('.mjs')?[d+'/'+f]:[]));for(const f of [...walk('src'),...walk('tests')])execFileSync(process.execPath,['--check',f],{stdio:'inherit'})\"",
     "test": "node --test"
   },
   "engines": {
     "node": ">=20"
   }
 }
-

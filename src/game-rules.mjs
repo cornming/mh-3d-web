@@ -74,15 +74,24 @@ export function evaluateHuntRank({ victory, elapsedSeconds, damageTaken }) {
   return "C";
 }
 
-/** 平面 (XZ) 上，點到線段的最近點；t=0 為 a 端、t=1 為 b 端。 */
-export function closestPointOnSegment2D(px, pz, ax, az, bx, bz) {
+/** 平面 (XZ) 上，點到線段的最近點（寫入既有 out 物件，避免每幀產生暫時物件）；t=0 為 a 端、t=1 為 b 端。 */
+export function closestPointOnSegment2DInto(px, pz, ax, az, bx, bz, out = { t: 0, x: 0, z: 0, distance: 0 }) {
   const dx = bx - ax;
   const dz = bz - az;
   const lengthSq = dx * dx + dz * dz;
   const t = lengthSq > 0 ? clamp(((px - ax) * dx + (pz - az) * dz) / lengthSq, 0, 1) : 0;
   const x = ax + dx * t;
   const z = az + dz * t;
-  return { t, x, z, distance: Math.hypot(px - x, pz - z) };
+  out.t = t;
+  out.x = x;
+  out.z = z;
+  out.distance = Math.hypot(px - x, pz - z);
+  return out;
+}
+
+/** 平面 (XZ) 上，點到線段的最近點；t=0 為 a 端、t=1 為 b 端。 */
+export function closestPointOnSegment2D(px, pz, ax, az, bx, bz) {
+  return closestPointOnSegment2DInto(px, pz, ax, az, bx, bz, { t: 0, x: 0, z: 0, distance: 0 });
 }
 
 /**
